@@ -1,0 +1,23 @@
+node_modules/
+.DS_Store
+.idea/
+dist/
+build/
+*.log
+
+# Maven build output
+target/
+*.class
+*.jar
+*.war
+
+# Test reports / coverage
+**/surefire-reports/
+**/jacoco.exec
+**/site/jacoco/
+
+# Variabili d'ambiente locali (segreti) — solo .env.example è versionato
+.env
+*.env
+!.env.example
+
