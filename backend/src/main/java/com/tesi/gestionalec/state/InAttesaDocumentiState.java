@@ -4,8 +4,6 @@ import com.tesi.gestionalec.exception.InvalidStateException;
 import com.tesi.gestionalec.model.Documento;
 import com.tesi.gestionalec.model.Pratica;
 import com.tesi.gestionalec.model.StatoDocumento;
-import com.tesi.gestionalec.model.StatoPratica;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 
@@ -15,8 +13,13 @@ import java.util.List;
  * documento associato e tutti risultano approvati; in caso contrario
  * viene lanciata un'eccezione di stato non valido (HTTP 409).
  */
-@Component
-public class InAttesaDocumentiState implements StatoPraticaState{
+public final class InAttesaDocumentiState implements StatoPraticaState {
+
+    /** Stato privo di campi d'istanza: una sola istanza condivisa è sufficiente. */
+    public static final InAttesaDocumentiState INSTANCE = new InAttesaDocumentiState();
+
+    private InAttesaDocumentiState() {
+    }
 
     @Override
     public void avanza(Pratica pratica) {
@@ -38,12 +41,21 @@ public class InAttesaDocumentiState implements StatoPraticaState{
                     "Impossibile completare la pratica: tutti i documenti devono essere approvati.");
         }
 
-        pratica.setStato(StatoPratica.COMPLETATA);
-        pratica.setStatoCorrente(new CompletataState());
+        pratica.setStatoCorrente(CompletataState.INSTANCE);
     }
 
     @Override
-    public StatoPratica getStato() {
-        return StatoPratica.IN_ATTESA_DOCUMENTI;
+    public String getCodice() {
+        return "IN_ATTESA_DOCUMENTI";
+    }
+
+    @Override
+    public String getEtichetta() {
+        return "In attesa documenti";
+    }
+
+    @Override
+    public String toString() {
+        return getCodice();
     }
 }

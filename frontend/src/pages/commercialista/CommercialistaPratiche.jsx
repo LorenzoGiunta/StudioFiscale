@@ -127,7 +127,9 @@ export default function CommercialistaPratiche() {
         <Button variant="ghost" size="sm" icon={UserCheck} onClick={() => openAssegna(row)}>
           Assegna
         </Button>
-        {row.stato !== 'COMPLETATA' && (
+        {/* Quali stati siano terminali lo decide il backend (pattern State):
+            qui ci si limita a leggere il flag esposto dalla API */}
+        {row.avanzabile && (
           <Button variant="ghost" size="sm" icon={ArrowRight} onClick={() => avanzaStato(row.id)}>
             Avanza
           </Button>

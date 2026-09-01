@@ -1,6 +1,5 @@
 package com.tesi.gestionalec.dto.response;
 
-import com.tesi.gestionalec.model.StatoPratica;
 import com.tesi.gestionalec.model.TipoPratica;
 import lombok.Data;
 
@@ -15,7 +14,8 @@ import java.time.LocalDateTime;
 public class PraticaResponse {
     private Long id;
     private TipoPratica tipoPratica;
-    private StatoPratica stato;
+    private String stato;                // codice dello stato corrente, es. "IN_LAVORAZIONE"
+    private boolean avanzabile;          // falso sugli stati terminali
     private LocalDateTime dataCreazione;
     private LocalDate scadenza;
     private String nomeCliente;

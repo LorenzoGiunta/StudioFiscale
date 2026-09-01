@@ -5,6 +5,7 @@ import com.tesi.gestionalec.dto.request.PraticaRequest;
 import com.tesi.gestionalec.dto.request.RegistrazioneRequest;
 import com.tesi.gestionalec.dto.response.*;
 import com.tesi.gestionalec.model.*;
+import com.tesi.gestionalec.state.BozzaState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +35,7 @@ class MapperTest {
         Pratica pratica = new Pratica();
         pratica.setId(1L);
         pratica.setTipoPratica(TipoPratica.DICHIARAZIONE_REDDITI);
-        pratica.setStato(StatoPratica.BOZZA);
+        pratica.setStatoCorrente(BozzaState.INSTANCE);
         pratica.setCliente(cliente);
         pratica.setScadenza(LocalDate.of(2024, 12, 31));
 
@@ -42,7 +43,8 @@ class MapperTest {
 
         assertThat(dto.getId()).isEqualTo(1L);
         assertThat(dto.getTipoPratica()).isEqualTo(TipoPratica.DICHIARAZIONE_REDDITI);
-        assertThat(dto.getStato()).isEqualTo(StatoPratica.BOZZA);
+        assertThat(dto.getStato()).isEqualTo("BOZZA");
+        assertThat(dto.isAvanzabile()).isTrue();
         assertThat(dto.getNomeCliente()).isEqualTo("Mario Rossi");
         assertThat(dto.getScadenza()).isEqualTo(LocalDate.of(2024, 12, 31));
     }
@@ -284,7 +286,7 @@ class MapperTest {
         Pratica p = new Pratica();
         p.setId(1L);
         p.setTipoPratica(TipoPratica.DICHIARAZIONE_REDDITI);
-        p.setStato(StatoPratica.BOZZA);
+        p.setStatoCorrente(BozzaState.INSTANCE);
         p.setCliente(cliente);
         p.setAssegnataA(collaboratore);
         return p;

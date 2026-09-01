@@ -16,9 +16,9 @@ import java.time.LocalDateTime;
  * Pratica gestita per conto di un cliente.
  *
  * Possiede un tipo, una scadenza e uno stato che evolve secondo il pattern State
- * tramite lo stato corrente associato. È collegata al cliente, all'eventuale
- * collaboratore assegnatario e ai documenti. È soggetta a cancellazione logica:
- * un filtro a livello di entità ne esclude le occorrenze eliminate, conservando
+ * tramite l'oggetto di stato che ne incapsula il comportamento. È collegata al
+ * cliente, all'eventuale collaboratore assegnatario e ai documenti. È soggetta
+ * a cancellazione logica: un filtro a livello di entità ne esclude le occorrenze eliminate, conservando
  * lo storico per l'audit fiscale.
  */
 @Entity
@@ -44,10 +44,13 @@ public class Pratica {
     @Column(nullable = false)
     private TipoPratica tipoPratica;
 
+    // Pattern State: lo stato È l'oggetto che ne incapsula il comportamento.
+    // Non esiste un codice affiancato da tenere in sincronia: il converter
+    // traduce l'oggetto da e verso la colonna 'stato' del database.
     @NotNull(message = "Lo stato della pratica è obbligatorio")
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private StatoPratica stato;
+    @Convert(converter = StatoPraticaConverter.class)
+    @Column(name = "stato", nullable = false)
+    private StatoPraticaState statoCorrente = BozzaState.INSTANCE;
 
     @ManyToOne
     @JoinColumn(name = "assegnata_a_id")
@@ -62,23 +65,19 @@ public class Pratica {
     @Column(nullable = false, updatable = false)
     private LocalDateTime dataCreazione;
 
-    // State Pattern: oggetto in memoria, non persistito (ricostruito in @PostLoad)
-    @Transient
-    private StatoPraticaState statoCorrente;
-
     @Column(nullable = false)
     private boolean deleted = false;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @PostLoad
-    private void inizializzaStato() {
-        this.statoCorrente = switch (this.stato) {
-            case BOZZA               -> new BozzaState();
-            case IN_LAVORAZIONE      -> new InLavorazioneState();
-            case IN_ATTESA_DOCUMENTI -> new InAttesaDocumentiState();
-            case COMPLETATA          -> new CompletataState();
-        };
+    /**
+     * Context del pattern State: la richiesta di avanzamento è delegata allo
+     * stato corrente, che decide se la transizione è ammessa e verso quale
+     * stato portare la pratica. I chiamanti si rivolgono solo a questo metodo,
+     * senza conoscere le classi di stato.
+     */
+    public void avanza() {
+        statoCorrente.avanza(this);
     }
 }

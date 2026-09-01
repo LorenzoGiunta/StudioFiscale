@@ -100,9 +100,8 @@ class ControllerTest {
         pratica.setId(10L);
         pratica.setCliente(cliente);
         pratica.setTipoPratica(TipoPratica.DICHIARAZIONE_REDDITI);
-        pratica.setStato(StatoPratica.BOZZA);
+        pratica.setStatoCorrente(com.tesi.gestionalec.state.BozzaState.INSTANCE);
         pratica.setScadenza(LocalDate.of(2025, 12, 31));
-        pratica.setStatoCorrente(new com.tesi.gestionalec.state.BozzaState());
 
         utenteAutenticato = new Cliente();
         utenteAutenticato.setId(1L);

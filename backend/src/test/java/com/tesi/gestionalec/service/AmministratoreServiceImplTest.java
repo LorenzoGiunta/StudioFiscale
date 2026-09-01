@@ -87,7 +87,7 @@ class AmministratoreServiceImplTest {
         comm.setEnabled(false);
 
         com.tesi.gestionalec.model.Pratica pratica = new com.tesi.gestionalec.model.Pratica();
-        pratica.setStato(com.tesi.gestionalec.model.StatoPratica.BOZZA);
+        pratica.setStatoCorrente(com.tesi.gestionalec.state.BozzaState.INSTANCE);
 
         com.tesi.gestionalec.model.Documento doc = new com.tesi.gestionalec.model.Documento();
         doc.setStato(com.tesi.gestionalec.model.StatoDocumento.IN_REVISIONE);

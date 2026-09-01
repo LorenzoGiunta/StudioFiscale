@@ -13,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.tesi.gestionalec.state.StatoPraticaState;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -53,13 +56,15 @@ public class PraticaServiceImpl implements PraticaService {
     @Override
     public Pratica creaPratica(Pratica pratica) {
 
-        pratica.setStato(StatoPratica.BOZZA);
+        // Lo stato iniziale (BOZZA) è garantito dall'entità stessa: il servizio
+        // non lo imposta, così non può disallinearsi dal pattern State.
         Pratica salvata = praticaRepo.save(pratica);
 
         // Avvisa il cliente dell'avvenuta creazione della pratica
         Notifica notifica = new Notifica();
         notifica.setDestinatario(pratica.getCliente());
-        notifica.setMessaggio("La tua pratica è stata creata con stato: " + pratica.getStato());
+        notifica.setMessaggio("La tua pratica è stata creata con stato: "
+                + pratica.getStatoCorrente().getEtichetta());
         notifica.setTipo(TipoNotifica.CAMBIO_STATO);
         notifica.setLetta(false);
         gestoreNotifiche.notificaTutti(notifica);
@@ -132,26 +137,33 @@ public class PraticaServiceImpl implements PraticaService {
         return praticaRepo.findByAssegnataA(collaboratore);
     }
 
+    // La transazione resta aperta per tutta la transizione: lo stato
+    // IN_ATTESA_DOCUMENTI ispeziona i documenti della pratica, che sono una
+    // collezione LAZY (con open-in-view disattivato andrebbe altrimenti in
+    // LazyInitializationException).
     @Override
+    @Transactional
     public void avanzaStato(Long praticaId) {
         avanzaStato(trovaPerId(praticaId));
     }
 
     @Override
+    @Transactional
     public void avanzaStato(Long praticaId, Utente richiedente) {
         // trovaPerId(id, richiedente) applica l'ownership check per ruolo
         avanzaStato(trovaPerId(praticaId, richiedente));
     }
 
     private void avanzaStato(Pratica pratica) {
-        // La transizione è delegata allo stato corrente (pattern State)
-        pratica.getStatoCorrente().avanza(pratica);
+        // Il Context delega la transizione al proprio stato (pattern State)
+        pratica.avanza();
         praticaRepo.save(pratica);
 
         // Avvisa il cliente del cambio di stato
         Notifica notifica = new Notifica();
         notifica.setDestinatario(pratica.getCliente());
-        notifica.setMessaggio("La tua pratica è passata allo stato: " + pratica.getStato().getEtichetta());
+        notifica.setMessaggio("La tua pratica è passata allo stato: "
+                + pratica.getStatoCorrente().getEtichetta());
         notifica.setTipo(TipoNotifica.CAMBIO_STATO);
         notifica.setLetta(false);
         gestoreNotifiche.notificaTutti(notifica);
@@ -192,8 +204,8 @@ public class PraticaServiceImpl implements PraticaService {
     }
 
     @Override
-    public List<Pratica> trovaPerStato(StatoPratica stato) {
-        return praticaRepo.findByStato(stato);
+    public List<Pratica> trovaPerStato(StatoPraticaState stato) {
+        return praticaRepo.findByStatoCorrente(stato);
     }
 
     /**

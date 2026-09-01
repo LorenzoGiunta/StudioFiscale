@@ -59,8 +59,7 @@ class FacadeTest {
         pratica.setId(10L);
         pratica.setCliente(cliente);
         pratica.setTipoPratica(TipoPratica.DICHIARAZIONE_REDDITI);
-        pratica.setStato(StatoPratica.BOZZA);
-        pratica.setStatoCorrente(new com.tesi.gestionalec.state.BozzaState());
+        pratica.setStatoCorrente(com.tesi.gestionalec.state.BozzaState.INSTANCE);
     }
 
     private PraticaRequest praticaRequest() {
@@ -106,14 +105,14 @@ class FacadeTest {
     @Test
     @DisplayName("avanzaERecupera: avanza lo stato (con ownership) e restituisce il DTO aggiornato")
     void avanzaERecupera_avanzaERestituisce() {
-        pratica.setStato(StatoPratica.IN_LAVORAZIONE);
+        pratica.setStatoCorrente(com.tesi.gestionalec.state.InLavorazioneState.INSTANCE);
         when(praticaService.trovaPerId(10L, commercialista)).thenReturn(pratica);
 
         PraticaResponse result = praticaFacade.avanzaERecupera(10L, commercialista);
 
         verify(praticaService).avanzaStato(10L, commercialista);
         verify(praticaService).trovaPerId(10L, commercialista);
-        assertThat(result.getStato()).isEqualTo(StatoPratica.IN_LAVORAZIONE);
+        assertThat(result.getStato()).isEqualTo("IN_LAVORAZIONE");
     }
 
     // ─── DocumentoFacade.caricaEAssegna ───────────────────────────────────────

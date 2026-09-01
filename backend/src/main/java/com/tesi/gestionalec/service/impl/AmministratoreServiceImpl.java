@@ -150,7 +150,7 @@ public class AmministratoreServiceImpl extends UtenteServiceImpl implements Ammi
         stat.setUtentiPerRuolo(raggruppa(utenti, u -> u.getRuolo().name()));
 
         stat.setPraticheTotali(pratiche.size());
-        stat.setPratichePerStato(raggruppa(pratiche, p -> p.getStato().name()));
+        stat.setPratichePerStato(raggruppa(pratiche, p -> p.getStatoCorrente().getCodice()));
 
         stat.setDocumentiTotali(documenti.size());
         stat.setDocumentiPerStato(raggruppa(documenti, d -> d.getStato().name()));

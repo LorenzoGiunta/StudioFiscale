@@ -5,6 +5,7 @@ import com.tesi.gestionalec.model.*;
 import com.tesi.gestionalec.repository.*;
 import com.tesi.gestionalec.service.impl.CalcoloImposteServiceImpl;
 import com.tesi.gestionalec.service.impl.CommercialistaServiceImpl;
+import com.tesi.gestionalec.service.interfaces.PraticaService;
 import com.tesi.gestionalec.state.BozzaState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,6 +37,7 @@ class CommercialistaServiceImplTest {
     @Mock com.tesi.gestionalec.repository.CommercialistaRepo commercialistaRepo;
     @Mock com.tesi.gestionalec.repository.DocumentoRepo documentoRepo;
     @Mock CalcoloImposteServiceImpl calcoloImposte;
+    @Mock PraticaService praticaService;
 
     CommercialistaServiceImpl commercialistaService;
 
@@ -48,7 +50,7 @@ class CommercialistaServiceImplTest {
         commercialistaService = new CommercialistaServiceImpl(
                 utenteRepo, passwordEncoder, praticaRepo,
                 collaboratoreRepo, clienteRepo, commercialistaRepo,
-                documentoRepo, calcoloImposte);
+                documentoRepo, calcoloImposte, praticaService);
 
         collaboratore = new Collaboratore();
         collaboratore.setId(5L);
@@ -66,8 +68,7 @@ class CommercialistaServiceImplTest {
         pratica.setId(10L);
         pratica.setCliente(cliente);
         pratica.setTipoPratica(TipoPratica.DICHIARAZIONE_REDDITI);
-        pratica.setStato(StatoPratica.BOZZA);
-        pratica.setStatoCorrente(new BozzaState());
+        pratica.setStatoCorrente(BozzaState.INSTANCE);
     }
 
     // ─── trovaTutteLePratiche ─────────────────────────────────────────────────
@@ -122,21 +123,19 @@ class CommercialistaServiceImplTest {
     // ─── avanzaStatoPratica ───────────────────────────────────────────────────
 
     @Test
-    @DisplayName("avanzaStatoPratica: avanza stato da BOZZA a IN_LAVORAZIONE")
-    void avanzaStatoPratica_daBozzaAInLavorazione() {
-        when(praticaRepo.findById(10L)).thenReturn(Optional.of(pratica));
-        when(praticaRepo.save(any())).thenReturn(pratica);
-
+    @DisplayName("avanzaStatoPratica delega al servizio delle pratiche, senza duplicarne la logica")
+    void avanzaStatoPratica_delegaAlPraticaService() {
         commercialistaService.avanzaStatoPratica(10L);
 
-        assertThat(pratica.getStato()).isEqualTo(StatoPratica.IN_LAVORAZIONE);
-        verify(praticaRepo).save(pratica);
+        verify(praticaService).avanzaStato(10L);
+        verifyNoInteractions(praticaRepo);
     }
 
     @Test
     @DisplayName("avanzaStatoPratica: pratica non trovata → ResourceNotFoundException")
     void avanzaStatoPratica_nonTrovata_lanciaEccezione() {
-        when(praticaRepo.findById(99L)).thenReturn(Optional.empty());
+        doThrow(new ResourceNotFoundException("Pratica", "id", 99L))
+                .when(praticaService).avanzaStato(99L);
 
         assertThatThrownBy(() -> commercialistaService.avanzaStatoPratica(99L))
                 .isInstanceOf(ResourceNotFoundException.class);

@@ -4,7 +4,6 @@ import com.tesi.gestionalec.exception.InvalidStateException;
 import com.tesi.gestionalec.model.Documento;
 import com.tesi.gestionalec.model.Pratica;
 import com.tesi.gestionalec.model.StatoDocumento;
-import com.tesi.gestionalec.model.StatoPratica;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -51,24 +50,33 @@ class StatoPraticaStateTest {
         pratica.setListaDocumenti(docs);
     }
 
+    // ─── Stato iniziale ───────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Una pratica nuova nasce già in BOZZA, senza interventi esterni")
+    void praticaNuova_nasceInBozza() {
+        assertThat(pratica.getStatoCorrente()).isSameAs(BozzaState.INSTANCE);
+        assertThat(pratica.getStatoCorrente().getCodice()).isEqualTo("BOZZA");
+    }
+
     // ─── BOZZA ────────────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("BozzaState.avanza() → IN_LAVORAZIONE")
     void bozza_avanza_aInLavorazione() {
-        pratica.setStato(StatoPratica.BOZZA);
-        pratica.setStatoCorrente(new BozzaState());
+        pratica.setStatoCorrente(BozzaState.INSTANCE);
 
-        pratica.getStatoCorrente().avanza(pratica);
+        pratica.avanza();
 
-        assertThat(pratica.getStato()).isEqualTo(StatoPratica.IN_LAVORAZIONE);
-        assertThat(pratica.getStatoCorrente()).isInstanceOf(InLavorazioneState.class);
+        assertThat(pratica.getStatoCorrente()).isSameAs(InLavorazioneState.INSTANCE);
     }
 
     @Test
-    @DisplayName("BozzaState.getStato() restituisce BOZZA")
-    void bozza_getStato() {
-        assertThat(new BozzaState().getStato()).isEqualTo(StatoPratica.BOZZA);
+    @DisplayName("BozzaState espone codice ed etichetta")
+    void bozza_codiceEdEtichetta() {
+        assertThat(BozzaState.INSTANCE.getCodice()).isEqualTo("BOZZA");
+        assertThat(BozzaState.INSTANCE.getEtichetta()).isEqualTo("Bozza");
+        assertThat(BozzaState.INSTANCE.isFinale()).isFalse();
     }
 
     // ─── IN_LAVORAZIONE ───────────────────────────────────────────────────────
@@ -76,19 +84,18 @@ class StatoPraticaStateTest {
     @Test
     @DisplayName("InLavorazioneState.avanza() → IN_ATTESA_DOCUMENTI")
     void inLavorazione_avanza_aInAttesaDocumenti() {
-        pratica.setStato(StatoPratica.IN_LAVORAZIONE);
-        pratica.setStatoCorrente(new InLavorazioneState());
+        pratica.setStatoCorrente(InLavorazioneState.INSTANCE);
 
-        pratica.getStatoCorrente().avanza(pratica);
+        pratica.avanza();
 
-        assertThat(pratica.getStato()).isEqualTo(StatoPratica.IN_ATTESA_DOCUMENTI);
-        assertThat(pratica.getStatoCorrente()).isInstanceOf(InAttesaDocumentiState.class);
+        assertThat(pratica.getStatoCorrente()).isSameAs(InAttesaDocumentiState.INSTANCE);
     }
 
     @Test
-    @DisplayName("InLavorazioneState.getStato() restituisce IN_LAVORAZIONE")
-    void inLavorazione_getStato() {
-        assertThat(new InLavorazioneState().getStato()).isEqualTo(StatoPratica.IN_LAVORAZIONE);
+    @DisplayName("InLavorazioneState espone codice ed etichetta")
+    void inLavorazione_codiceEdEtichetta() {
+        assertThat(InLavorazioneState.INSTANCE.getCodice()).isEqualTo("IN_LAVORAZIONE");
+        assertThat(InLavorazioneState.INSTANCE.getEtichetta()).isEqualTo("In lavorazione");
     }
 
     // ─── IN_ATTESA_DOCUMENTI ──────────────────────────────────────────────────
@@ -96,36 +103,35 @@ class StatoPraticaStateTest {
     @Test
     @DisplayName("InAttesaDocumentiState.avanza() → COMPLETATA (tutti i documenti approvati)")
     void inAttesaDocumenti_avanza_aCompletata() {
-        pratica.setStato(StatoPratica.IN_ATTESA_DOCUMENTI);
-        pratica.setStatoCorrente(new InAttesaDocumentiState());
+        pratica.setStatoCorrente(InAttesaDocumentiState.INSTANCE);
         impostaDocumentiApprovati(2);
 
-        pratica.getStatoCorrente().avanza(pratica);
+        pratica.avanza();
 
-        assertThat(pratica.getStato()).isEqualTo(StatoPratica.COMPLETATA);
-        assertThat(pratica.getStatoCorrente()).isInstanceOf(CompletataState.class);
+        assertThat(pratica.getStatoCorrente()).isSameAs(CompletataState.INSTANCE);
     }
 
     @Test
     @DisplayName("InAttesaDocumentiState.avanza() lancia eccezione se non ci sono documenti")
     void inAttesaDocumenti_avanza_senzaDocumenti_lanciaEccezione() {
-        pratica.setStato(StatoPratica.IN_ATTESA_DOCUMENTI);
-        pratica.setStatoCorrente(new InAttesaDocumentiState());
+        pratica.setStatoCorrente(InAttesaDocumentiState.INSTANCE);
         pratica.setListaDocumenti(new ArrayList<>());
 
-        assertThatThrownBy(() -> pratica.getStatoCorrente().avanza(pratica))
+        assertThatThrownBy(() -> pratica.avanza())
                 .isInstanceOf(InvalidStateException.class)
                 .hasMessageContaining("almeno un documento");
+
+        // Il fallimento non deve lasciare la pratica in uno stato avanzato
+        assertThat(pratica.getStatoCorrente()).isSameAs(InAttesaDocumentiState.INSTANCE);
     }
 
     @Test
     @DisplayName("InAttesaDocumentiState.avanza() lancia eccezione se lista documenti è null")
     void inAttesaDocumenti_avanza_listaNull_lanciaEccezione() {
-        pratica.setStato(StatoPratica.IN_ATTESA_DOCUMENTI);
-        pratica.setStatoCorrente(new InAttesaDocumentiState());
+        pratica.setStatoCorrente(InAttesaDocumentiState.INSTANCE);
         pratica.setListaDocumenti(null);
 
-        assertThatThrownBy(() -> pratica.getStatoCorrente().avanza(pratica))
+        assertThatThrownBy(() -> pratica.avanza())
                 .isInstanceOf(InvalidStateException.class)
                 .hasMessageContaining("almeno un documento");
     }
@@ -133,14 +139,13 @@ class StatoPraticaStateTest {
     @Test
     @DisplayName("InAttesaDocumentiState.avanza() lancia eccezione se un documento è IN_REVISIONE")
     void inAttesaDocumenti_avanza_conDocumentoInRevisione_lanciaEccezione() {
-        pratica.setStato(StatoPratica.IN_ATTESA_DOCUMENTI);
-        pratica.setStatoCorrente(new InAttesaDocumentiState());
+        pratica.setStatoCorrente(InAttesaDocumentiState.INSTANCE);
         pratica.setListaDocumenti(List.of(
                 creaDocumento(StatoDocumento.APPROVATO),
                 creaDocumento(StatoDocumento.IN_REVISIONE)
         ));
 
-        assertThatThrownBy(() -> pratica.getStatoCorrente().avanza(pratica))
+        assertThatThrownBy(() -> pratica.avanza())
                 .isInstanceOf(InvalidStateException.class)
                 .hasMessageContaining("tutti i documenti devono essere approvati");
     }
@@ -148,66 +153,99 @@ class StatoPraticaStateTest {
     @Test
     @DisplayName("InAttesaDocumentiState.avanza() lancia eccezione se un documento è RIFIUTATO")
     void inAttesaDocumenti_avanza_conDocumentoRifiutato_lanciaEccezione() {
-        pratica.setStato(StatoPratica.IN_ATTESA_DOCUMENTI);
-        pratica.setStatoCorrente(new InAttesaDocumentiState());
+        pratica.setStatoCorrente(InAttesaDocumentiState.INSTANCE);
         pratica.setListaDocumenti(List.of(
                 creaDocumento(StatoDocumento.APPROVATO),
                 creaDocumento(StatoDocumento.RIFIUTATO)
         ));
 
-        assertThatThrownBy(() -> pratica.getStatoCorrente().avanza(pratica))
+        assertThatThrownBy(() -> pratica.avanza())
                 .isInstanceOf(InvalidStateException.class)
                 .hasMessageContaining("tutti i documenti devono essere approvati");
     }
 
     @Test
-    @DisplayName("InAttesaDocumentiState.getStato() restituisce IN_ATTESA_DOCUMENTI")
-    void inAttesaDocumenti_getStato() {
-        assertThat(new InAttesaDocumentiState().getStato()).isEqualTo(StatoPratica.IN_ATTESA_DOCUMENTI);
+    @DisplayName("InAttesaDocumentiState espone codice ed etichetta")
+    void inAttesaDocumenti_codiceEdEtichetta() {
+        assertThat(InAttesaDocumentiState.INSTANCE.getCodice()).isEqualTo("IN_ATTESA_DOCUMENTI");
+        assertThat(InAttesaDocumentiState.INSTANCE.getEtichetta()).isEqualTo("In attesa documenti");
     }
 
-    // ─── COMPLETATA (terminale) ────────────────────────────────────────────────
+    // ─── COMPLETATA (terminale) ───────────────────────────────────────────────
 
     @Test
     @DisplayName("CompletataState.avanza() lancia InvalidStateException")
     void completata_avanza_lanciaEccezione() {
-        pratica.setStato(StatoPratica.COMPLETATA);
-        pratica.setStatoCorrente(new CompletataState());
+        pratica.setStatoCorrente(CompletataState.INSTANCE);
 
-        assertThatThrownBy(() -> pratica.getStatoCorrente().avanza(pratica))
+        assertThatThrownBy(() -> pratica.avanza())
                 .isInstanceOf(InvalidStateException.class)
                 .hasMessageContaining("COMPLETATA");
     }
 
     @Test
-    @DisplayName("CompletataState.getStato() restituisce COMPLETATA")
-    void completata_getStato() {
-        assertThat(new CompletataState().getStato()).isEqualTo(StatoPratica.COMPLETATA);
+    @DisplayName("CompletataState è terminale ed espone codice ed etichetta")
+    void completata_eTerminale() {
+        assertThat(CompletataState.INSTANCE.isFinale()).isTrue();
+        assertThat(CompletataState.INSTANCE.getCodice()).isEqualTo("COMPLETATA");
+        assertThat(CompletataState.INSTANCE.getEtichetta()).isEqualTo("Completata");
     }
 
-    // ─── Flusso completo end-to-end ────────────────────────────────────────────
+    // ─── Flusso completo end-to-end ───────────────────────────────────────────
 
     @Test
     @DisplayName("Flusso completo: BOZZA → IN_LAVORAZIONE → IN_ATTESA_DOCUMENTI → COMPLETATA")
     void flussoDiAvanzamentoCompleto() {
-        pratica.setStato(StatoPratica.BOZZA);
-        pratica.setStatoCorrente(new BozzaState());
+        assertThat(pratica.getStatoCorrente()).isSameAs(BozzaState.INSTANCE);
 
-        pratica.getStatoCorrente().avanza(pratica);
-        assertThat(pratica.getStato()).isEqualTo(StatoPratica.IN_LAVORAZIONE);
+        pratica.avanza();
+        assertThat(pratica.getStatoCorrente()).isSameAs(InLavorazioneState.INSTANCE);
 
-        pratica.getStatoCorrente().avanza(pratica);
-        assertThat(pratica.getStato()).isEqualTo(StatoPratica.IN_ATTESA_DOCUMENTI);
+        pratica.avanza();
+        assertThat(pratica.getStatoCorrente()).isSameAs(InAttesaDocumentiState.INSTANCE);
 
-        // Per avanzare a COMPLETATA servono documenti tutti approvati
         impostaDocumentiApprovati(1);
+        pratica.avanza();
+        assertThat(pratica.getStatoCorrente()).isSameAs(CompletataState.INSTANCE);
 
-        pratica.getStatoCorrente().avanza(pratica);
-        assertThat(pratica.getStato()).isEqualTo(StatoPratica.COMPLETATA);
-
-        // Lo stato terminale non si può più avanzare
-        assertThatThrownBy(() -> pratica.getStatoCorrente().avanza(pratica))
+        // Stato terminale: non si avanza oltre
+        assertThatThrownBy(() -> pratica.avanza())
                 .isInstanceOf(InvalidStateException.class);
     }
-}
 
+    // ─── Converter di persistenza ─────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Il converter fa andata e ritorno tra oggetto di stato e codice")
+    void converter_andataERitorno() {
+        StatoPraticaConverter converter = new StatoPraticaConverter();
+
+        for (StatoPraticaState stato : List.of(
+                BozzaState.INSTANCE, InLavorazioneState.INSTANCE,
+                InAttesaDocumentiState.INSTANCE, CompletataState.INSTANCE)) {
+
+            String codice = converter.convertToDatabaseColumn(stato);
+            assertThat(codice).isEqualTo(stato.getCodice());
+            assertThat(converter.convertToEntityAttribute(codice)).isSameAs(stato);
+        }
+    }
+
+    @Test
+    @DisplayName("Il converter gestisce il valore null in entrambe le direzioni")
+    void converter_null() {
+        StatoPraticaConverter converter = new StatoPraticaConverter();
+
+        assertThat(converter.convertToDatabaseColumn(null)).isNull();
+        assertThat(converter.convertToEntityAttribute(null)).isNull();
+    }
+
+    @Test
+    @DisplayName("Il converter rifiuta un codice sconosciuto letto dal database")
+    void converter_codiceSconosciuto() {
+        StatoPraticaConverter converter = new StatoPraticaConverter();
+
+        assertThatThrownBy(() -> converter.convertToEntityAttribute("ARCHIVIATA"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ARCHIVIATA");
+    }
+}

@@ -8,6 +8,7 @@ import com.tesi.gestionalec.repository.InvitoCollaborazioneRepo;
 import com.tesi.gestionalec.repository.PraticaRepo;
 import com.tesi.gestionalec.service.impl.PraticaServiceImpl;
 import com.tesi.gestionalec.state.BozzaState;
+import com.tesi.gestionalec.state.InLavorazioneState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,8 +60,7 @@ class PraticaServiceImplTest {
         praticaBase.setId(10L);
         praticaBase.setCliente(cliente);
         praticaBase.setTipoPratica(TipoPratica.DICHIARAZIONE_REDDITI);
-        praticaBase.setStato(StatoPratica.BOZZA);
-        praticaBase.setStatoCorrente(new BozzaState());
+        praticaBase.setStatoCorrente(BozzaState.INSTANCE);
     }
 
     // ─── creaPratica ──────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ class PraticaServiceImplTest {
 
         Pratica salvata = praticaService.creaPratica(nuova);
 
-        assertThat(salvata.getStato()).isEqualTo(StatoPratica.BOZZA);
+        assertThat(salvata.getStatoCorrente()).isSameAs(BozzaState.INSTANCE);
         verify(praticaRepo, times(1)).save(nuova);
     }
 
@@ -202,7 +202,7 @@ class PraticaServiceImplTest {
 
         praticaService.avanzaStato(10L);
 
-        assertThat(praticaBase.getStato()).isEqualTo(StatoPratica.IN_LAVORAZIONE);
+        assertThat(praticaBase.getStatoCorrente()).isSameAs(InLavorazioneState.INSTANCE);
         verify(praticaRepo).save(praticaBase);
     }
 
@@ -283,12 +283,12 @@ class PraticaServiceImplTest {
     @Test
     @DisplayName("trovaPerStato filtra per stato BOZZA")
     void trovaPerStato_filtroCorretto() {
-        when(praticaRepo.findByStato(StatoPratica.BOZZA)).thenReturn(List.of(praticaBase));
+        when(praticaRepo.findByStatoCorrente(BozzaState.INSTANCE)).thenReturn(List.of(praticaBase));
 
-        List<Pratica> result = praticaService.trovaPerStato(StatoPratica.BOZZA);
+        List<Pratica> result = praticaService.trovaPerStato(BozzaState.INSTANCE);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getStato()).isEqualTo(StatoPratica.BOZZA);
+        assertThat(result.get(0).getStatoCorrente()).isSameAs(BozzaState.INSTANCE);
     }
 
     // ─── varianti sicure con ownership check (anti-IDOR) ──────────────────────
@@ -300,7 +300,7 @@ class PraticaServiceImplTest {
 
         Pratica salvata = praticaService.creaPratica(praticaBase, commercialista);
 
-        assertThat(salvata.getStato()).isEqualTo(StatoPratica.BOZZA);
+        assertThat(salvata.getStatoCorrente()).isSameAs(BozzaState.INSTANCE);
         verify(praticaRepo).save(praticaBase);
     }
 

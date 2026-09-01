@@ -10,6 +10,7 @@ import com.tesi.gestionalec.model.Pratica;
 import com.tesi.gestionalec.repository.*;
 import com.tesi.gestionalec.service.interfaces.CalcoloImposteService;
 import com.tesi.gestionalec.service.interfaces.CommercialistaService;
+import com.tesi.gestionalec.service.interfaces.PraticaService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ public class CommercialistaServiceImpl extends UtenteServiceImpl implements Comm
     private final CommercialistaRepo commercialistaRepo;
     private final DocumentoRepo documentoRepo;
     private final CalcoloImposteService calcoloImposte;
+    private final PraticaService praticaService;
 
     public CommercialistaServiceImpl(
             UtenteRepo utenteRepository,
@@ -41,7 +43,8 @@ public class CommercialistaServiceImpl extends UtenteServiceImpl implements Comm
             ClienteRepo clienteRepo,
             CommercialistaRepo commercialistaRepo,
             DocumentoRepo documentoRepo,
-            CalcoloImposteService calcoloImposte) {
+            CalcoloImposteService calcoloImposte,
+            PraticaService praticaService) {
         super(utenteRepository, passwordEncoder, commercialistaRepo);
         this.praticaRepository = praticaRepository;
         this.collaboratoreRepository = collaboratoreRepository;
@@ -49,6 +52,7 @@ public class CommercialistaServiceImpl extends UtenteServiceImpl implements Comm
         this.commercialistaRepo = commercialistaRepo;
         this.documentoRepo = documentoRepo;
         this.calcoloImposte = calcoloImposte;
+        this.praticaService = praticaService;
     }
 
     @Override
@@ -67,12 +71,15 @@ public class CommercialistaServiceImpl extends UtenteServiceImpl implements Comm
         praticaRepository.save(pratica);
     }
 
+    /**
+     * Avanzamento di stato di una pratica. La logica non è duplicata qui: viene
+     * delegata al servizio delle pratiche, che gestisce transazione, transizione
+     * (pattern State) e notifica al cliente in modo uniforme per tutti i
+     * chiamanti.
+     */
     @Override
     public void avanzaStatoPratica(Long praticaId) {
-        Pratica pratica = trovaById(praticaId);
-
-        pratica.getStatoCorrente().avanza(pratica); // transizione delegata al pattern State
-        praticaRepository.save(pratica);
+        praticaService.avanzaStato(praticaId);
     }
 
     @Override

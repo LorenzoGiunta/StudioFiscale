@@ -3,7 +3,7 @@ package com.tesi.gestionalec.service.interfaces;
 import com.tesi.gestionalec.model.Collaboratore;
 import com.tesi.gestionalec.model.Cliente;
 import com.tesi.gestionalec.model.Pratica;
-import com.tesi.gestionalec.model.StatoPratica;
+import com.tesi.gestionalec.state.StatoPraticaState;
 import com.tesi.gestionalec.model.Utente;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -53,7 +53,7 @@ public interface PraticaService {
      */
     void assegnaCollaboratore(Long praticaId, Long collaboratoreId, Utente richiedente);
 
-    List<Pratica> trovaPerStato(StatoPratica stato);
+    List<Pratica> trovaPerStato(StatoPraticaState stato);
 
     /** Cancellazione logica della pratica. */
     void eliminaPratica(Long id);

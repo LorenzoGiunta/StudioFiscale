@@ -17,7 +17,9 @@ public class PraticaMapper {
         PraticaResponse dto = new PraticaResponse();
         dto.setId(pratica.getId());
         dto.setTipoPratica(pratica.getTipoPratica());
-        dto.setStato(pratica.getStato());
+        // Lo stato viaggia verso il client con il proprio codice stabile
+        dto.setStato(pratica.getStatoCorrente().getCodice());
+        dto.setAvanzabile(!pratica.getStatoCorrente().isFinale());
         dto.setDataCreazione(pratica.getDataCreazione());
         dto.setScadenza(pratica.getScadenza());
 

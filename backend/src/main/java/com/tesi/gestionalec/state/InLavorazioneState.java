@@ -1,25 +1,36 @@
 package com.tesi.gestionalec.state;
 
 import com.tesi.gestionalec.model.Pratica;
-import com.tesi.gestionalec.model.StatoPratica;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 
 /**
  * Stato di una pratica in corso di elaborazione (pattern State).
  * L'avanzamento la mette in attesa della documentazione necessaria.
  */
-@Component
-@RequiredArgsConstructor
-public class InLavorazioneState implements StatoPraticaState{
-    @Override
-    public void avanza(Pratica pratica) {
-        pratica.setStato(StatoPratica.IN_ATTESA_DOCUMENTI);
-        pratica.setStatoCorrente(new InAttesaDocumentiState());
+public final class InLavorazioneState implements StatoPraticaState {
+
+    /** Stato privo di campi d'istanza: una sola istanza condivisa è sufficiente. */
+    public static final InLavorazioneState INSTANCE = new InLavorazioneState();
+
+    private InLavorazioneState() {
     }
 
     @Override
-    public StatoPratica getStato() {
-        return StatoPratica.IN_LAVORAZIONE;
+    public void avanza(Pratica pratica) {
+        pratica.setStatoCorrente(InAttesaDocumentiState.INSTANCE);
+    }
+
+    @Override
+    public String getCodice() {
+        return "IN_LAVORAZIONE";
+    }
+
+    @Override
+    public String getEtichetta() {
+        return "In lavorazione";
+    }
+
+    @Override
+    public String toString() {
+        return getCodice();
     }
 }
