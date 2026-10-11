@@ -6,7 +6,9 @@ import chatService from '../services/ChatService.js';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 
-const WS_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// Stessa origine del frontend, salvo VITE_API_BASE_URL esplicito: in sviluppo
+// il proxy di Vite inoltra /ws al backend, nei container lo fa nginx.
+const WS_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 /**
  * Componente della chat interna.

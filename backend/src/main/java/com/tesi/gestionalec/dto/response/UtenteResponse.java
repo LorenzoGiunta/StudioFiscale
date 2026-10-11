@@ -1,6 +1,7 @@
 package com.tesi.gestionalec.dto.response;
 
 import com.tesi.gestionalec.model.Ruolo;
+import com.tesi.gestionalec.model.StatoRegistrazione;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
@@ -15,4 +16,5 @@ public class UtenteResponse {
     private Ruolo ruolo;
     private boolean enabled;
     private boolean deleted;
+    private StatoRegistrazione statoRegistrazione;   // IN_ATTESA / APPROVATA / RIFIUTATA
 }

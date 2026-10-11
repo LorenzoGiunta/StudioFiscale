@@ -8,6 +8,7 @@ import com.tesi.gestionalec.model.Utente;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -54,6 +55,9 @@ public interface PraticaService {
     void assegnaCollaboratore(Long praticaId, Long collaboratoreId, Utente richiedente);
 
     List<Pratica> trovaPerStato(StatoPraticaState stato);
+
+    /** Pratiche con scadenza compresa tra le due date (estremi inclusi). */
+    List<Pratica> trovaConScadenzaTra(LocalDate da, LocalDate a);
 
     /** Cancellazione logica della pratica. */
     void eliminaPratica(Long id);

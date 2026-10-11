@@ -1,5 +1,6 @@
 package com.tesi.gestionalec.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -13,21 +14,26 @@ import java.util.List;
  *
  * Abilita le richieste provenienti dalle origini del frontend, specificando
  * metodi, header e modalità di gestione delle credenziali ammessi, così da
- * consentire il dialogo tra client e API serviti su porte diverse.
+ * consentire il dialogo tra client e API serviti su porte diverse. Le origini
+ * ammesse arrivano dalla configurazione ({@code app.cors.allowed-origins}),
+ * così cambiano tra sviluppo, container e produzione senza toccare il codice.
  */
 @Configuration
 public class CorsConfig {
 
+    // Origini del frontend ammesse, separate da virgola nella property
+    @Value("${app.cors.allowed-origins}")
+    private List<String> originiAmmesse;
+
+    /** Origini ammesse, condivise con l'handshake WebSocket. */
+    public List<String> getOriginiAmmesse() {
+        return originiAmmesse;
+    }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-
-        // Origini del frontend ammesse
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:5173",
-                "http://localhost:3000",
-                "http://127.0.0.1:5173"
-        ));
+        config.setAllowedOriginPatterns(originiAmmesse);
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));

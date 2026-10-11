@@ -1,0 +1,8 @@
+# Non finiscono nel contesto di build: output, file caricati, segreti locali
+target/
+uploads/
+.env
+*.env
+!.env.example
+*.log
+.idea/

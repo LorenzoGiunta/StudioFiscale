@@ -4,6 +4,8 @@ import { ToastProvider } from './contexts/ToastContext.jsx';
 
 import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
+import PasswordDimenticataPage from './pages/auth/PasswordDimenticataPage.jsx';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage.jsx';
 import DashboardLayout from './components/DashboardLayout.jsx';
 
 // Cliente pages
@@ -30,6 +32,7 @@ import CollaboratoreMieiStudi from './pages/collaboratore/CollaboratoreMieiStudi
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 import AdminUtenti from './pages/admin/AdminUtenti.jsx';
+import AdminRichiesteIscrizione from './pages/admin/AdminRichiesteIscrizione.jsx';
 
 // Shared
 import ChatView from './components/ChatView.jsx';
@@ -59,6 +62,8 @@ function AppRoutes() {
       {/* Auth */}
       <Route path="/login" element={isAuthenticated ? <Navigate to={getDashboardRoute()} replace /> : <LoginPage />} />
       <Route path="/register" element={isAuthenticated ? <Navigate to={getDashboardRoute()} replace /> : <RegisterPage />} />
+      <Route path="/password-dimenticata" element={isAuthenticated ? <Navigate to={getDashboardRoute()} replace /> : <PasswordDimenticataPage />} />
+      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
       {/* Test connessione API */}
       <Route path="/api-status" element={<ApiStatus />} />
@@ -119,6 +124,7 @@ function AppRoutes() {
       }>
         <Route index element={<AdminDashboard />} />
         <Route path="utenti" element={<AdminUtenti />} />
+        <Route path="richieste" element={<AdminRichiesteIscrizione />} />
         <Route path="notifiche" element={<NotificheView />} />
       </Route>
 

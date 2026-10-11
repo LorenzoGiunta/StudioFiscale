@@ -68,7 +68,7 @@ class ScadenzaFiscaleSchedulerTest {
     @Test
     @DisplayName("controllaScadenze: pratica in scadenza entro 7gg → notifica inviata")
     void controllaScadenze_praticaInScadenza_notificaInviata() {
-        when(praticaService.trovaTutte()).thenReturn(List.of(praticaInScadenza));
+        when(praticaService.trovaConScadenzaTra(any(), any())).thenReturn(List.of(praticaInScadenza));
         when(notificaRepo.existsByDestinatarioAndTipoAndDataCreazioneBetween(
                 eq(cliente), eq(TipoNotifica.SCADENZA_IMMINENTE), any(), any()))
                 .thenReturn(false);
@@ -87,7 +87,7 @@ class ScadenzaFiscaleSchedulerTest {
     @Test
     @DisplayName("controllaScadenze: notifica già inviata oggi → nessuna notifica duplicata")
     void controllaScadenze_notificaGiaInviata_nessunDuplico() {
-        when(praticaService.trovaTutte()).thenReturn(List.of(praticaInScadenza));
+        when(praticaService.trovaConScadenzaTra(any(), any())).thenReturn(List.of(praticaInScadenza));
         when(notificaRepo.existsByDestinatarioAndTipoAndDataCreazioneBetween(
                 any(), any(), any(), any()))
                 .thenReturn(true); // già notificato oggi
@@ -100,7 +100,7 @@ class ScadenzaFiscaleSchedulerTest {
     @Test
     @DisplayName("controllaScadenze: pratica futura (>7gg) → nessuna notifica")
     void controllaScadenze_praticaFutura_nessunNotifica() {
-        when(praticaService.trovaTutte()).thenReturn(List.of(praticaFutura));
+        when(praticaService.trovaConScadenzaTra(any(), any())).thenReturn(List.of(praticaFutura));
 
         scheduler.controllaScadenze();
 
@@ -112,7 +112,7 @@ class ScadenzaFiscaleSchedulerTest {
     @Test
     @DisplayName("controllaScadenze: pratica senza scadenza → ignorata")
     void controllaScadenze_senzaScadenza_ignorata() {
-        when(praticaService.trovaTutte()).thenReturn(List.of(praticaSenzaScadenza));
+        when(praticaService.trovaConScadenzaTra(any(), any())).thenReturn(List.of(praticaSenzaScadenza));
 
         scheduler.controllaScadenze();
 
@@ -122,7 +122,7 @@ class ScadenzaFiscaleSchedulerTest {
     @Test
     @DisplayName("controllaScadenze: nessuna pratica → nessuna notifica")
     void controllaScadenze_nessunaPratica_nessunNotifica() {
-        when(praticaService.trovaTutte()).thenReturn(List.of());
+        when(praticaService.trovaConScadenzaTra(any(), any())).thenReturn(List.of());
 
         scheduler.controllaScadenze();
 

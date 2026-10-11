@@ -50,6 +50,7 @@ const NAV_ITEMS = {
   AMMINISTRATORE: [
     { to: '/dashboard/admin', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/dashboard/admin/utenti', icon: Users, label: 'Gestione Utenti' },
+    { to: '/dashboard/admin/richieste', icon: ClipboardCheck, label: 'Richieste Iscrizione' },
     { to: '/dashboard/admin/notifiche', icon: Bell, label: 'Notifiche' },
   ],
 };

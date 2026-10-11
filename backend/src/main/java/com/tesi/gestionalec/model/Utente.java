@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLRestriction;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -52,9 +53,21 @@ public abstract class Utente implements UserDetails {
 
     @NotBlank(message = "La password è obbligatoria")
     @Column(nullable = false)
+    @ToString.Exclude   // l'hash non deve finire nei log
     private String password;
 
     private boolean enabled;
+
+    // Esito della verifica amministrativa sull'iscrizione. Per i ruoli che non
+    // la richiedono è APPROVATA fin dalla nascita; per gli altri resta IN_ATTESA
+    // (con enabled=false) finché un amministratore non decide.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stato_registrazione", nullable = false)
+    private StatoRegistrazione statoRegistrazione = StatoRegistrazione.APPROVATA;
+
+    @CreationTimestamp
+    @Column(name = "data_registrazione", updatable = false)
+    private LocalDateTime dataRegistrazione;
 
     @Column(nullable = false)
     private boolean deleted = false;
@@ -66,6 +79,15 @@ public abstract class Utente implements UserDetails {
     private String ruoloDiscriminante;
 
     public abstract Ruolo getRuolo();
+
+    /**
+     * Indica se l'iscrizione con questo ruolo deve essere verificata da un
+     * amministratore prima che l'account possa accedere. Le sottoclassi che
+     * lo richiedono sovrascrivono questo metodo.
+     */
+    public boolean richiedeApprovazione() {
+        return false;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

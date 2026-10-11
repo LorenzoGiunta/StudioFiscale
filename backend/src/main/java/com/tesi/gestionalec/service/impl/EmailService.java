@@ -1,54 +1,42 @@
 package com.tesi.gestionalec.service.impl;
 
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Servizio per l'invio delle email transazionali.
  *
- * Compone e spedisce messaggi in formato HTML in modo asincrono, così da non
- * incidere sui tempi di risposta delle operazioni che li generano. L'invio è
- * disattivabile via configurazione (utile in dimostrazione o in ambienti privi
- * di server SMTP) e gli errori di spedizione vengono registrati senza
- * propagarsi, lasciando intatto il resto del flusso, comprese le notifiche
- * applicative.
+ * È il punto d'ingresso per i servizi di dominio: se viene chiamato dentro una
+ * transazione, la spedizione viene rimandata al commit, così che un rollback
+ * successivo non lasci in giro email per operazioni mai avvenute (un invito o
+ * un link di reset che sul database non esistono). Fuori da una transazione
+ * spedisce subito. In entrambi i casi l'invio effettivo è asincrono, delegato
+ * a {@link SpedizioneEmail}, e non incide sui tempi di risposta.
+ *
+ * Nota: la delega passa per un bean distinto, e non per un metodo di questa
+ * stessa classe, perché {@code @Async} agisce solo attraverso il proxy Spring.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    private final SpedizioneEmail spedizione;
 
-    // Consente di disabilitare l'invio mantenendo operativo il resto del flusso
-    @Value("${app.email.enabled:true}")
-    private boolean emailEnabled;
-
-    @Async("emailExecutor")
     public void inviaEmail(String destinatario, String oggetto, String testo) {
-        if (!emailEnabled) {
-            log.info("Invio email disabilitato — destinatario {}, oggetto '{}'", destinatario, oggetto);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            // Dentro una transazione: si spedisce solo se e quando va a buon fine
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    spedizione.spedisci(destinatario, oggetto, testo);
+                }
+            });
             return;
         }
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setTo(destinatario);
-            helper.setSubject(oggetto);
-            helper.setText(testo, true); // corpo in formato HTML
-
-            mailSender.send(message);
-            log.info("Email inviata a {}", destinatario);
-        } catch (Exception e) {
-            // Errore non bloccante: viene registrato ma non propagato, così la
-            // notifica applicativa resta comunque persistita.
-            log.warn("Invio email a {} fallito: {}", destinatario, e.getMessage());
-        }
+        spedizione.spedisci(destinatario, oggetto, testo);
     }
 }

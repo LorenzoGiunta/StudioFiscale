@@ -47,6 +47,20 @@ class AdminService extends BaseService {
   ripristina(id) {
     return this.put(`/admin/utenti/${id}/ripristina`);
   }
+
+  // ─── Richieste di iscrizione (verifica manuale del numero di albo) ────────
+
+  async getRichiesteIscrizione() {
+    return Utente.fromList(await this.get('/admin/richieste-iscrizione'));
+  }
+
+  approvaRichiesta(id) {
+    return this.put(`/admin/richieste-iscrizione/${id}/approva`);
+  }
+
+  rifiutaRichiesta(id, motivazione = null) {
+    return this.put(`/admin/richieste-iscrizione/${id}/rifiuta`, motivazione ? { motivazione } : {});
+  }
 }
 
 export default new AdminService();

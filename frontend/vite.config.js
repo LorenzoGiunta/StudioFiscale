@@ -19,6 +19,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // WebSocket della chat (SockJS/STOMP): stessa origine anche in sviluppo
+      '/ws': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 })

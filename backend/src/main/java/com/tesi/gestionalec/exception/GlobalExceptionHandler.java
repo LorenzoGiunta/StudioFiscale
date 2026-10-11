@@ -282,6 +282,48 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
+    // Token di recupero password inesistente, usato o scaduto (400)
+
+    @ExceptionHandler(TokenResetNonValidoException.class)
+    public ResponseEntity<ApiError> handleTokenResetNonValido(
+            TokenResetNonValidoException ex,
+            HttpServletRequest request) {
+
+        log.info("[AUTH] Token di reset password non valido su {}", request.getRequestURI());
+
+        ApiError error = new ApiError(
+                HttpStatus.BAD_REQUEST.value(),
+                "Link non valido",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    // Iscrizione non ancora approvata o rifiutata (401)
+
+    /**
+     * Il login con un account in attesa di verifica (o rifiutato) viene
+     * distinto dal generico "account disabilitato": il titolo dell'errore
+     * permette al client di spiegare all'utente cosa sta succedendo.
+     */
+    @ExceptionHandler(RegistrazioneNonApprovataException.class)
+    public ResponseEntity<ApiError> handleRegistrazioneNonApprovata(
+            RegistrazioneNonApprovataException ex,
+            HttpServletRequest request) {
+
+        log.info("[AUTH] Tentativo di accesso con iscrizione {} su {}",
+                ex.getStato(), request.getRequestURI());
+
+        ApiError error = new ApiError(
+                HttpStatus.UNAUTHORIZED.value(),
+                ex.getTitolo(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
     // Violazione di un vincolo di integrità del database (409)
 
     /**

@@ -5,8 +5,19 @@ import { Button, Input, Select } from '../../components/ui/FormControls.jsx';
 import DataTable from '../../components/ui/DataTable.jsx';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useNavigate } from 'react-router-dom';
 import adminService from '../../services/AdminService.js';
-import { Filter, Search, UserCheck, UserX, Trash2, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Filter, Search, UserCheck, UserX, Trash2, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, ClipboardCheck } from 'lucide-react';
+
+// Etichetta e stile dello stato dell'account: l'esito della verifica
+// dell'iscrizione prevale sul semplice abilitato/disabilitato
+function statoAccount(row) {
+  if (row.statoRegistrazione === 'IN_ATTESA') return ['In attesa verifica', 'text-amber-700 bg-amber-50'];
+  if (row.statoRegistrazione === 'RIFIUTATA') return ['Rifiutato', 'text-red-600 bg-red-50'];
+  return row.enabled
+    ? ['Attivo', 'text-emerald-600 bg-emerald-50']
+    : ['Disabilitato', 'text-red-600 bg-red-50'];
+}
 
 /**
  * Pagina di gestione utenti dell'amministratore: elenco paginato e filtrabile,
@@ -15,6 +26,7 @@ import { Filter, Search, UserCheck, UserX, Trash2, Loader2, RefreshCw, RotateCcw
 export default function AdminUtenti() {
   const toast = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [utenti, setUtenti] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState(null);
@@ -126,21 +138,31 @@ export default function AdminUtenti() {
       </div>
     )},
     { key: 'ruolo', label: 'Ruolo', render: (_, row) => <RuoloBadge ruolo={row.ruolo} />, width: '150px' },
-    { key: 'abilitato', label: 'Stato', render: (_, row) => (
-      <span className={`inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-sm ${
-        row.enabled ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'
-      }`}>
-        {row.enabled ? 'Attivo' : 'Disabilitato'}
-      </span>
-    ), width: '100px' },
+    { key: 'abilitato', label: 'Stato', render: (_, row) => {
+      const [label, classi] = statoAccount(row);
+      return (
+        <span className={`inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-sm ${classi}`}>
+          {label}
+        </span>
+      );
+    }, width: '130px' },
     { key: 'azioni', label: 'Azioni', render: (_, row) => {
       // Un amministratore non può disabilitare o eliminare sé stesso né un altro
       // amministratore: le azioni distruttive restano nascoste su queste righe,
       // coerentemente con il vincolo applicato dal backend.
       const protetto = row.id === user?.id || row.ruolo === 'AMMINISTRATORE';
+      // Le iscrizioni in attesa si gestiscono dalla pagina dedicata, dove il
+      // numero di albo è in evidenza e l'utente viene avvisato dell'esito
+      const inAttesa = row.statoRegistrazione === 'IN_ATTESA';
       return (
         <div className="flex items-center gap-1">
-          {!row.enabled && (
+          {inAttesa && (
+            <Button variant="ghost" size="sm" icon={ClipboardCheck}
+              onClick={() => navigate('/dashboard/admin/richieste')}>
+              Verifica
+            </Button>
+          )}
+          {!row.enabled && !inAttesa && (
             <Button variant="ghost" size="sm" icon={UserCheck}
               loading={actionId === row.id}
               onClick={() => handleAbilita(row.id, `${row.nome} ${row.cognome}`)}>

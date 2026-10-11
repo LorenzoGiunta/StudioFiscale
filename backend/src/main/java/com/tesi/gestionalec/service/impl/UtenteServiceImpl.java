@@ -7,6 +7,7 @@ import com.tesi.gestionalec.exception.ResourceNotFoundException;
 import com.tesi.gestionalec.model.Cliente;
 import com.tesi.gestionalec.model.Commercialista;
 import com.tesi.gestionalec.model.Ruolo;
+import com.tesi.gestionalec.model.StatoRegistrazione;
 import com.tesi.gestionalec.model.Utente;
 import com.tesi.gestionalec.repository.CommercialistaRepo;
 import com.tesi.gestionalec.repository.UtenteRepo;
@@ -61,7 +62,17 @@ public class UtenteServiceImpl implements UtenteService, UserDetailsService {
         }
 
         utente.setPassword(passwordEncoder.encode(utente.getPassword()));
-        utente.setEnabled(true);
+
+        // I ruoli soggetti a verifica (oggi il commercialista, per il numero di
+        // albo) nascono disabilitati e in attesa: potranno accedere solo dopo
+        // l'approvazione di un amministratore. Gli altri sono attivi da subito.
+        if (utente.richiedeApprovazione()) {
+            utente.setStatoRegistrazione(StatoRegistrazione.IN_ATTESA);
+            utente.setEnabled(false);
+        } else {
+            utente.setStatoRegistrazione(StatoRegistrazione.APPROVATA);
+            utente.setEnabled(true);
+        }
 
         if (utente instanceof Cliente cliente && commercialistaId != null) {
             Commercialista comm = commercialistaRepo.findById(commercialistaId)
@@ -80,6 +91,12 @@ public class UtenteServiceImpl implements UtenteService, UserDetailsService {
      * dichiarativa e vengono pertanto verificati esplicitamente nel servizio.
      */
     public void validaPerRuolo(RegistrazioneRequest request) {
+        // Gli amministratori non si creano dall'endpoint pubblico: altrimenti
+        // chiunque potrebbe darsi i privilegi massimi (e approvarsi da solo).
+        if (request.getRuolo() == Ruolo.AMMINISTRATORE) {
+            throw new IllegalArgumentException(
+                    "Non è possibile registrarsi come amministratore");
+        }
         if (request.getRuolo() == Ruolo.CLIENTE) {
             if (request.getCodFiscale() == null || request.getCodFiscale().isBlank()) {
                 throw new IllegalArgumentException("Il codice fiscale è obbligatorio per un cliente");
@@ -121,6 +138,9 @@ public class UtenteServiceImpl implements UtenteService, UserDetailsService {
     public void abilitaUtente(Long id) {
         Utente utente = trovaPerId(id);
         utente.setEnabled(true);
+        // Abilitare un account equivale ad approvarne l'iscrizione: non deve
+        // poter esistere un utente attivo ma ancora "in attesa" o "rifiutato".
+        utente.setStatoRegistrazione(StatoRegistrazione.APPROVATA);
         repo.save(utente);
     }
 
@@ -166,7 +186,9 @@ public class UtenteServiceImpl implements UtenteService, UserDetailsService {
                 .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", id));
         utente.setDeleted(false);
         utente.setDeletedAt(null);
-        utente.setEnabled(true);
+        // L'accesso torna attivo solo se l'iscrizione era stata approvata: un
+        // account in attesa o rifiutato, se ripristinato, resta disabilitato.
+        utente.setEnabled(utente.getStatoRegistrazione() == StatoRegistrazione.APPROVATA);
         repo.save(utente);
     }
 

@@ -1,5 +1,6 @@
 package com.tesi.gestionalec.repository;
 
+import com.tesi.gestionalec.model.StatoRegistrazione;
 import com.tesi.gestionalec.model.Utente;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -18,6 +19,11 @@ import java.util.Optional;
 public interface UtenteRepo extends JpaRepository<Utente, Long> {
 
     Optional<Utente> findByEmail(String email);
+
+    /** Iscrizioni in un dato stato di verifica, dalla più vecchia alla più recente. */
+    List<Utente> findByStatoRegistrazioneOrderByDataRegistrazioneAsc(StatoRegistrazione stato);
+
+    long countByStatoRegistrazione(StatoRegistrazione stato);
 
     // Conteggio per email che include anche gli utenti cancellati logicamente:
     // un'email occupata da un account eliminato mantiene comunque il vincolo di

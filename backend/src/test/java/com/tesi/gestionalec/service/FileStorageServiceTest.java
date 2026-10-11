@@ -69,22 +69,57 @@ class FileStorageServiceTest {
     }
 
     @Test
-    @DisplayName("salva: filename vuoto → salva comunque senza eccezioni")
-    void salva_filenameVuoto_nonLancia() throws IOException {
+    @DisplayName("salva: filename vuoto (nessuna estensione) → respinto")
+    void salva_filenameVuoto_respinto() {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "", "application/octet-stream", "x".getBytes());
 
-        String percorso = service.salva(file);
+        assertThatThrownBy(() -> service.salva(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Formato non ammesso");
+    }
 
-        assertThat(percorso).isNotBlank();
-        assertThat(Files.exists(tempDir.resolve(percorso))).isTrue();
+    @Test
+    @DisplayName("salva: estensione non ammessa (.exe) → respinto, nulla scritto su disco")
+    void salva_estensioneNonAmmessa_respinto() throws IOException {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "virus.exe", "application/octet-stream", "MZ".getBytes());
+
+        assertThatThrownBy(() -> service.salva(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Formato non ammesso");
+        try (var elenco = Files.list(tempDir)) {
+            assertThat(elenco.count()).isZero();
+        }
+    }
+
+    @Test
+    @DisplayName("salva: estensione ammessa ma content-type incoerente (pdf dichiarato text/html) → respinto")
+    void salva_contentTypeNonAmmesso_respinto() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "finto.pdf", "text/html", "<script>".getBytes());
+
+        assertThatThrownBy(() -> service.salva(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Tipo di contenuto non ammesso");
+    }
+
+    @Test
+    @DisplayName("salva: .docx con il suo content-type e .PDF maiuscolo → accettati")
+    void salva_formatiAmmessi_ok() throws IOException {
+        MockMultipartFile docx = new MockMultipartFile("file", "bilancio.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "x".getBytes());
+        MockMultipartFile pdfMaiuscolo = new MockMultipartFile("file", "F24.PDF", null, "x".getBytes());
+
+        assertThat(service.salva(docx)).endsWith("bilancio.docx");
+        assertThat(service.salva(pdfMaiuscolo)).endsWith("F24.PDF");
     }
 
     @Test
     @DisplayName("carica: ritorna Resource leggibile per file esistente")
     void carica_fileEsistente_ritornaResource() throws IOException {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "test.txt", "text/plain", "hello".getBytes());
+                "file", "test.pdf", "application/pdf", "hello".getBytes());
         String percorso = service.salva(file);
 
         Resource res = service.carica(percorso);
@@ -104,7 +139,7 @@ class FileStorageServiceTest {
     @DisplayName("elimina: rimuove file esistente senza lanciare")
     void elimina_fileEsistente_rimuove() throws IOException {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "del.txt", "text/plain", "x".getBytes());
+                "file", "del.pdf", "application/pdf", "x".getBytes());
         String percorso = service.salva(file);
 
         service.elimina(percorso);

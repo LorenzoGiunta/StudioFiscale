@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Shield, UserCheck, UserX, Loader2, FileText, FolderOpen, Trash2, Clock } from 'lucide-react';
+import { Users, Shield, UserCheck, UserX, Loader2, FileText, FolderOpen, Trash2, Clock, ClipboardCheck } from 'lucide-react';
 import { StatsCard, PageTitle, SectionTitle } from '../../components/ui/Display.jsx';
 import { Button } from '../../components/ui/FormControls.jsx';
 import { useToast } from '../../contexts/ToastContext.jsx';
@@ -112,6 +112,29 @@ export default function AdminDashboard() {
         Ultima azione amministrativa:
         <span className="font-medium text-navy-700">{formatDateTime(ultimaAzione)}</span>
       </p>
+
+      {/* Iscrizioni da verificare: in evidenza perché richiedono un'azione */}
+      {stat.richiesteInAttesa > 0 && (
+        <button
+          onClick={() => navigate('richieste')}
+          className="w-full flex items-center justify-between gap-4 bg-amber-50 border border-amber-200 rounded-sm px-5 py-4 mb-6 text-left hover:bg-amber-100/70 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-sm bg-amber-100 text-amber-700 flex items-center justify-center">
+              <ClipboardCheck size={20} strokeWidth={1.75} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                {stat.richiesteInAttesa === 1
+                  ? '1 richiesta di iscrizione da verificare'
+                  : `${stat.richiesteInAttesa} richieste di iscrizione da verificare`}
+              </p>
+              <p className="text-xs text-amber-700">Controlla il numero di albo e approva o rifiuta l'accesso</p>
+            </div>
+          </div>
+          <span className="text-xs font-semibold text-amber-800 uppercase tracking-wider shrink-0">Verifica →</span>
+        </button>
+      )}
 
       {/* Metriche utenti */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

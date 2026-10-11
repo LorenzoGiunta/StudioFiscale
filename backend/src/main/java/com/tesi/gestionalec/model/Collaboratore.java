@@ -18,7 +18,7 @@ import java.util.List;
 @DiscriminatorValue("COLLABORATORE")
 @Getter
 @Setter
-@ToString(exclude = {"praticheAssegnate" , "documentiInRevisione"})
+@ToString(exclude = {"praticheAssegnate", "documentiInRevisione", "associazioni"})   // collection LAZY: fuori sessione esploderebbero
 @AllArgsConstructor
 @NoArgsConstructor
 public class Collaboratore extends Utente {

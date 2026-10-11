@@ -1,0 +1,81 @@
+# =====================================================================
+# StudioFiscale — avvio completo con Docker Compose.
+#
+#   docker compose up -d --build      avvia tutto (prima volta: ~3-5 min di build)
+#   docker compose logs -f backend    segue i log del backend
+#   docker compose down               ferma tutto (i dati restano nei volumi)
+#   docker compose down -v            ferma tutto E cancella database e documenti
+#
+# I container NON si riavviano da soli al boot: su una macchina di sviluppo si
+# accendono solo quando servono. Per un vero deploy aggiungere a ogni servizio
+# "restart: unless-stopped".
+#
+# Prerequisito: backend/.env compilato a partire da backend/.env.example.
+# È l'unico file di configurazione: contiene la password del DB (usata sia
+# da MySQL sia dal backend), il segreto JWT e le impostazioni email.
+#
+# Frontend + API:  http://localhost:8081   (nginx inoltra /api e /ws al backend)
+# Backend diretto: http://localhost:8080   (comodo per curl/Postman, opzionale)
+# =====================================================================
+
+services:
+
+  mysql:
+    image: mysql:8.4
+    container_name: studiofiscale-mysql
+    env_file: ./backend/.env
+    # L'immagine MySQL vuole MYSQL_ROOT_PASSWORD: la si ricava da DB_PASSWORD del
+    # .env, così la password è scritta in un posto solo. Il backend si collega
+    # come root (DB_USER è forzato sotto); lo schema lo crea Flyway.
+    entrypoint: ["bash", "-c", "MYSQL_ROOT_PASSWORD=\"$$DB_PASSWORD\" exec docker-entrypoint.sh mysqld"]
+    environment:
+      MYSQL_DATABASE: gestionalec
+      TZ: Europe/Rome
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$DB_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  backend:
+    build: ./backend
+    container_name: studiofiscale-backend
+    env_file: ./backend/.env
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      # Sovrascrivono il .env: dentro la rete Compose MySQL si chiama "mysql"
+      DB_URL: jdbc:mysql://mysql:3306/gestionalec?createDatabaseIfNotExist=true
+      DB_USER: root
+      UPLOAD_DIR: /data/uploads
+      TZ: Europe/Rome
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      # L'immagine JRE non ha curl: si verifica che la porta risponda
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8080' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 18
+      start_period: 40s
+
+  frontend:
+    build: ./frontend
+    container_name: studiofiscale-frontend
+    ports:
+      - "8081:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  mysql-data:    # database: sopravvive a restart e rebuild
+  uploads:       # documenti caricati dai clienti

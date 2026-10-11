@@ -2,7 +2,7 @@ package com.tesi.gestionalec.observer;
 
 import com.tesi.gestionalec.model.Notifica;
 import com.tesi.gestionalec.observer.interfaces.NotificaObserver;
-import com.tesi.gestionalec.service.impl.EmailService;
+import com.tesi.gestionalec.service.impl.SpedizioneEmail;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -10,17 +10,19 @@ import org.springframework.stereotype.Component;
  * Observer concreto che inoltra le notifiche sul canale email.
  *
  * Determina l'oggetto del messaggio in base al tipo di evento e ne compone
- * il corpo a partire dai dati del destinatario, delegando l'invio effettivo
- * all'{@link EmailService}. Non è necessario un pool separato: l'invio SMTP
- * asincrono è già gestito da {@code EmailService} su {@code emailExecutor},
- * evitando il doppio salto di thread che occupava {@code notificaExecutor}
- * per poi passare immediatamente a {@code emailExecutor}.
+ * il corpo a partire dai dati del destinatario, delegando l'invio effettivo a
+ * {@link SpedizioneEmail}. Legge nome ed email sul thread chiamante e passa
+ * all'altro thread solo stringhe, così nessuna entità JPA attraversa il
+ * confine. Chiama la spedizione asincrona direttamente, e non il servizio
+ * transazionale, perché il {@code GestoreNotifiche} lo invoca già dopo il
+ * commit: un ulteriore rinvio "al commit" in quella fase non verrebbe mai
+ * eseguito.
  */
 @Component
 @RequiredArgsConstructor
 public class EmailNotificaObserver implements NotificaObserver {
 
-    private final EmailService emailService;
+    private final SpedizioneEmail spedizione;
 
     @Override
     public void aggiorna(Notifica notifica) {
@@ -35,9 +37,13 @@ public class EmailNotificaObserver implements NotificaObserver {
             case INVITO_COLLABORAZIONE -> "Invito di collaborazione";
             case ACCOUNT_DISABILITATO  -> "Account disabilitato";
             case ACCOUNT_CREATO        -> "Benvenuto su Gestionale Commercialista";
+            case RICHIESTA_ISCRIZIONE  -> "Nuova richiesta di iscrizione da verificare";
+            case ACCOUNT_APPROVATO     -> "Iscrizione approvata";
+            case ACCOUNT_RIFIUTATO     -> "Iscrizione rifiutata";
+            case PASSWORD_MODIFICATA   -> "La tua password è stata reimpostata";
         };
 
-        emailService.inviaEmail(email, oggetto, costruisciHtml(notifica));
+        spedizione.spedisci(email, oggetto, costruisciHtml(notifica));
     }
 
     private String costruisciHtml(Notifica notifica) {
@@ -52,4 +58,4 @@ public class EmailNotificaObserver implements NotificaObserver {
                 notifica.getMessaggio()
         );
     }
-}
+}

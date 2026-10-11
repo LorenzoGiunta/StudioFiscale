@@ -1,5 +1,7 @@
 package com.tesi.gestionalec.controller;
 
+import com.tesi.gestionalec.dto.request.RifiutoRichiestaRequest;
+import com.tesi.gestionalec.dto.response.RichiestaIscrizioneResponse;
 import com.tesi.gestionalec.dto.response.StatisticheResponse;
 import com.tesi.gestionalec.dto.response.UltimaAzioneResponse;
 import com.tesi.gestionalec.dto.response.UtenteResponse;
@@ -16,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -23,8 +26,9 @@ import java.util.List;
  * Controller dell'area di amministrazione.
  *
  * Consente la gestione degli utenti (consultazione paginata, abilitazione,
- * disabilitazione, cancellazione logica e ripristino) e la consultazione delle
- * statistiche di sistema. L'accesso è riservato agli amministratori.
+ * disabilitazione, cancellazione logica e ripristino), la verifica manuale
+ * delle richieste di iscrizione e la consultazione delle statistiche di
+ * sistema. L'accesso è riservato agli amministratori.
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -101,6 +105,32 @@ public class AmministratoreController {
     public ResponseEntity<Void> ripristina(@PathVariable Long id,
             @AuthenticationPrincipal Utente utente) {
         amministratoreService.ripristinaUtente(id, utente);
+        return ResponseEntity.ok().build();
+    }
+
+    // ─── Richieste di iscrizione da verificare ───────────────────────────────
+
+    // Iscrizioni in attesa: l'amministratore controlla a mano il numero di albo
+    @GetMapping("/richieste-iscrizione")
+    public ResponseEntity<List<RichiestaIscrizioneResponse>> richiesteIscrizione() {
+        List<RichiestaIscrizioneResponse> richieste = amministratoreService.trovaRichiesteIscrizione()
+                .stream().map(UtenteMapper::toRichiestaIscrizione).toList();
+        return ResponseEntity.ok(richieste);
+    }
+
+    @PutMapping("/richieste-iscrizione/{id}/approva")
+    public ResponseEntity<Void> approvaIscrizione(@PathVariable Long id,
+            @AuthenticationPrincipal Utente utente) {
+        amministratoreService.approvaIscrizione(id, utente);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/richieste-iscrizione/{id}/rifiuta")
+    public ResponseEntity<Void> rifiutaIscrizione(@PathVariable Long id,
+            @Valid @RequestBody(required = false) RifiutoRichiestaRequest request,
+            @AuthenticationPrincipal Utente utente) {
+        String motivazione = request != null ? request.getMotivazione() : null;
+        amministratoreService.rifiutaIscrizione(id, motivazione, utente);
         return ResponseEntity.ok().build();
     }
 }

@@ -14,6 +14,7 @@ public class StatisticheResponse {
     private long utentiAbilitati;
     private long utentiDisabilitati;
     private long utentiEliminati;
+    private long richiesteInAttesa;      // iscrizioni da verificare
     private Map<String, Long> utentiPerRuolo;
 
     private long praticheTotali;

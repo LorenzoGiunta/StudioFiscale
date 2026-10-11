@@ -77,6 +77,47 @@ class UtenteServiceImplTest {
     }
 
     @Test
+    @DisplayName("validaPerRuolo: la registrazione come AMMINISTRATORE è respinta")
+    void validaPerRuolo_amministratore_respinta() {
+        com.tesi.gestionalec.dto.request.RegistrazioneRequest req =
+                new com.tesi.gestionalec.dto.request.RegistrazioneRequest();
+        req.setRuolo(Ruolo.AMMINISTRATORE);
+
+        assertThatThrownBy(() -> utenteService.validaPerRuolo(req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("amministratore");
+    }
+
+    @Test
+    @DisplayName("registra: un cliente nasce APPROVATO e abilitato")
+    void registra_cliente_approvato() {
+        when(passwordEncoder.encode(any())).thenReturn("hashed");
+        when(repo.save(any())).thenReturn(utente);
+
+        utenteService.registra(utente);
+
+        assertThat(utente.getStatoRegistrazione()).isEqualTo(StatoRegistrazione.APPROVATA);
+        assertThat(utente.isEnabled()).isTrue();
+    }
+
+    @Test
+    @DisplayName("registra: un commercialista resta IN_ATTESA e disabilitato finché l'admin non verifica l'albo")
+    void registra_commercialista_inAttesaEDisabilitato() {
+        Commercialista comm = new Commercialista();
+        comm.setEmail("giulia@studio.it");
+        comm.setPassword("Password1!");
+        comm.setNumeroAlbo("12345/A");
+        when(passwordEncoder.encode(any())).thenReturn("hashed");
+        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Utente salvato = utenteService.registra(comm);
+
+        assertThat(salvato.getStatoRegistrazione()).isEqualTo(StatoRegistrazione.IN_ATTESA);
+        assertThat(salvato.isEnabled()).isFalse();
+        verify(repo).save(comm);
+    }
+
+    @Test
     @DisplayName("registra(utente, commId): associa il commercialista al cliente")
     void registra_conCommercialista_associaCommercialista() {
         Commercialista comm = new Commercialista();
@@ -272,6 +313,19 @@ class UtenteServiceImplTest {
         verify(repo).save(utente);
     }
 
+    @Test
+    @DisplayName("abilitaUtente: su un account in attesa equivale ad approvarne l'iscrizione")
+    void abilitaUtente_approvaIscrizioneInAttesa() {
+        utente.setEnabled(false);
+        utente.setStatoRegistrazione(StatoRegistrazione.IN_ATTESA);
+        when(repo.findById(1L)).thenReturn(Optional.of(utente));
+
+        utenteService.abilitaUtente(1L);
+
+        assertThat(utente.isEnabled()).isTrue();
+        assertThat(utente.getStatoRegistrazione()).isEqualTo(StatoRegistrazione.APPROVATA);
+    }
+
     // ─── disabilitaUtente ─────────────────────────────────────────────────────
 
     @Test
@@ -323,6 +377,21 @@ class UtenteServiceImplTest {
         assertThat(utente.isDeleted()).isFalse();
         assertThat(utente.isEnabled()).isTrue();
         assertThat(utente.getDeletedAt()).isNull();
+        verify(repo).save(utente);
+    }
+
+    @Test
+    @DisplayName("ripristinaUtente: un account in attesa torna visibile ma resta disabilitato")
+    void ripristina_inAttesa_restaDisabilitato() {
+        utente.setDeleted(true);
+        utente.setEnabled(false);
+        utente.setStatoRegistrazione(StatoRegistrazione.IN_ATTESA);
+        when(repo.findByIdIncludeDeleted(1L)).thenReturn(Optional.of(utente));
+
+        utenteService.ripristinaUtente(1L);
+
+        assertThat(utente.isDeleted()).isFalse();
+        assertThat(utente.isEnabled()).isFalse();
         verify(repo).save(utente);
     }
 

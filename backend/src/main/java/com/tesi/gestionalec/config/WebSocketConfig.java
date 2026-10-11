@@ -20,6 +20,7 @@ import org.springframework.web.socket.config.annotation.*;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor authInterceptor;
+    private final CorsConfig corsConfig;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -30,8 +31,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Stesse origini ammesse per le API REST: niente "*" sull'handshake
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
+                .setAllowedOriginPatterns(corsConfig.getOriginiAmmesse().toArray(String[]::new))
                 .withSockJS();
     }
 

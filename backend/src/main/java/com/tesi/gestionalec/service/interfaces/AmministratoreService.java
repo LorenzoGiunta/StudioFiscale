@@ -3,6 +3,8 @@ package com.tesi.gestionalec.service.interfaces;
 import com.tesi.gestionalec.dto.response.StatisticheResponse;
 import com.tesi.gestionalec.model.Utente;
 
+import java.util.List;
+
 /**
  * Contratto specifico per l'amministratore: tracciamento dell'attività
  * amministrativa e produzione delle statistiche di sistema, in aggiunta alle
@@ -23,4 +25,14 @@ public interface AmministratoreService extends UtenteService{
     void disabilitaUtente(Long id, Utente richiedente);
     void eliminaUtente(Long id, Utente richiedente);
     void ripristinaUtente(Long id, Utente richiedente);
+
+    /**
+     * Verifica manuale delle iscrizioni. Le richieste sono gli account nati
+     * IN_ATTESA (commercialisti, di cui va controllato il numero di albo):
+     * l'approvazione li abilita, il rifiuto li lascia disabilitati. In entrambi
+     * i casi l'utente viene avvisato.
+     */
+    List<Utente> trovaRichiesteIscrizione();
+    void approvaIscrizione(Long id, Utente richiedente);
+    void rifiutaIscrizione(Long id, String motivazione, Utente richiedente);
 }

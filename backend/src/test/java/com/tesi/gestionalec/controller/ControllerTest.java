@@ -64,6 +64,8 @@ class ControllerTest {
     @Mock AmministratoreService amministratoreService;
     @Mock UtenteService utenteService;
     @Mock CommercialistaRepo commercialistaRepo;
+    @Mock com.tesi.gestionalec.repository.AmministratoreRepo amministratoreRepo;
+    @Mock PasswordResetService passwordResetService;
     @Mock DocumentoService documentoService;
     @Mock FileStorageService fileStorageService;
     @Mock PraticaFacade praticaFacade;
@@ -800,7 +802,7 @@ class ControllerTest {
     @Test
     @DisplayName("AuthController.registra → 200 OK con JWT")
     void auth_registra_200() {
-        AuthController controller = new AuthController(utenteService, gestoreTokenService, authManager, commercialistaRepo, gestoreNotifiche);
+        AuthController controller = new AuthController(utenteService, gestoreTokenService, authManager, commercialistaRepo, amministratoreRepo, gestoreNotifiche, passwordResetService);
         com.tesi.gestionalec.dto.request.RegistrazioneRequest request = new com.tesi.gestionalec.dto.request.RegistrazioneRequest();
         request.setNome("Mario");
         request.setCognome("Rossi");
@@ -828,9 +830,131 @@ class ControllerTest {
     }
 
     @Test
+    @DisplayName("AuthController.registra (commercialista) → 202 senza token, admin avvisati")
+    void auth_registra_commercialista_202_inAttesa() {
+        AuthController controller = new AuthController(utenteService, gestoreTokenService, authManager, commercialistaRepo, amministratoreRepo, gestoreNotifiche, passwordResetService);
+        com.tesi.gestionalec.dto.request.RegistrazioneRequest request = new com.tesi.gestionalec.dto.request.RegistrazioneRequest();
+        request.setNome("Giulia");
+        request.setCognome("Bianchi");
+        request.setEmail("giulia@studio.it");
+        request.setPassword("Password1!");
+        request.setRuolo(Ruolo.COMMERCIALISTA);
+        request.setNumeroAlbo("12345/A");
+
+        // Il servizio ha lasciato l'account in attesa e disabilitato
+        Commercialista salvato = new Commercialista();
+        salvato.setId(7L);
+        salvato.setNome("Giulia");
+        salvato.setCognome("Bianchi");
+        salvato.setEmail("giulia@studio.it");
+        salvato.setNumeroAlbo("12345/A");
+        salvato.setEnabled(false);
+        salvato.setStatoRegistrazione(StatoRegistrazione.IN_ATTESA);
+
+        Amministratore admin = new Amministratore();
+        admin.setId(1L);
+        admin.setEnabled(true);
+
+        when(utenteService.registra(any(), any())).thenReturn(salvato);
+        when(amministratoreRepo.findAll()).thenReturn(List.of(admin));
+
+        ResponseEntity<com.tesi.gestionalec.dto.response.AuthResponse> resp = controller.registra(request);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(resp.getBody().getToken()).isNull();
+        assertThat(resp.getBody().getStatoRegistrazione()).isEqualTo("IN_ATTESA");
+        verify(gestoreTokenService, never()).generaToken(any());
+
+        // Una notifica di presa in carico al richiedente + una a ciascun admin
+        ArgumentCaptor<Notifica> captor = ArgumentCaptor.forClass(Notifica.class);
+        verify(gestoreNotifiche, times(2)).notificaTutti(captor.capture());
+        assertThat(captor.getAllValues())
+                .extracting(Notifica::getTipo)
+                .containsExactlyInAnyOrder(TipoNotifica.ACCOUNT_CREATO, TipoNotifica.RICHIESTA_ISCRIZIONE);
+        Notifica perAdmin = captor.getAllValues().stream()
+                .filter(n -> n.getTipo() == TipoNotifica.RICHIESTA_ISCRIZIONE).findFirst().orElseThrow();
+        assertThat(perAdmin.getDestinatario()).isSameAs(admin);
+        assertThat(perAdmin.getMessaggio()).contains("12345/A").contains("giulia@studio.it");
+    }
+
+    @Test
+    @DisplayName("AuthController.login con iscrizione in attesa → RegistrazioneNonApprovataException")
+    void auth_login_inAttesa_lanciaEccezioneDedicata() {
+        AuthController controller = new AuthController(utenteService, gestoreTokenService, authManager, commercialistaRepo, amministratoreRepo, gestoreNotifiche, passwordResetService);
+        com.tesi.gestionalec.dto.request.LoginRequest request = new com.tesi.gestionalec.dto.request.LoginRequest();
+        request.setEmail("giulia@studio.it");
+        request.setPassword("Password1!");
+
+        Commercialista inAttesa = new Commercialista();
+        inAttesa.setEmail("giulia@studio.it");
+        inAttesa.setEnabled(false);
+        inAttesa.setStatoRegistrazione(StatoRegistrazione.IN_ATTESA);
+
+        when(authManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new org.springframework.security.authentication.DisabledException("disabilitato"));
+        when(utenteService.trovaPerEmail("giulia@studio.it")).thenReturn(inAttesa);
+
+        assertThatThrownBy(() -> controller.login(request))
+                .isInstanceOf(com.tesi.gestionalec.exception.RegistrazioneNonApprovataException.class)
+                .satisfies(ex -> assertThat(((com.tesi.gestionalec.exception.RegistrazioneNonApprovataException) ex).getStato())
+                        .isEqualTo(StatoRegistrazione.IN_ATTESA));
+        verify(gestoreTokenService, never()).generaToken(any());
+    }
+
+    @Test
+    @DisplayName("AuthController.login con account disabilitato dall'admin → DisabledException standard")
+    void auth_login_disabilitato_rilanciaDisabledException() {
+        AuthController controller = new AuthController(utenteService, gestoreTokenService, authManager, commercialistaRepo, amministratoreRepo, gestoreNotifiche, passwordResetService);
+        com.tesi.gestionalec.dto.request.LoginRequest request = new com.tesi.gestionalec.dto.request.LoginRequest();
+        request.setEmail("mario@test.it");
+        request.setPassword("Password1!");
+
+        Cliente disabilitato = new Cliente();
+        disabilitato.setEmail("mario@test.it");
+        disabilitato.setEnabled(false);   // approvato ma disabilitato in seguito
+
+        when(authManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new org.springframework.security.authentication.DisabledException("disabilitato"));
+        when(utenteService.trovaPerEmail("mario@test.it")).thenReturn(disabilitato);
+
+        assertThatThrownBy(() -> controller.login(request))
+                .isInstanceOf(org.springframework.security.authentication.DisabledException.class);
+    }
+
+    @Test
+    @DisplayName("AuthController.richiediResetPassword → 200 e delega al servizio")
+    void auth_richiediReset_200() {
+        AuthController controller = new AuthController(utenteService, gestoreTokenService, authManager, commercialistaRepo, amministratoreRepo, gestoreNotifiche, passwordResetService);
+        com.tesi.gestionalec.dto.request.RichiestaResetPasswordRequest request =
+                new com.tesi.gestionalec.dto.request.RichiestaResetPasswordRequest();
+        request.setEmail("mario@test.it");
+
+        ResponseEntity<com.tesi.gestionalec.dto.response.MessaggioResponse> resp = controller.richiediResetPassword(request);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(resp.getBody().getMessage()).contains("Se l'indirizzo è registrato");
+        verify(passwordResetService).richiediReset("mario@test.it");
+    }
+
+    @Test
+    @DisplayName("AuthController.resetPassword → 200 e delega al servizio con token e nuova password")
+    void auth_resetPassword_200() {
+        AuthController controller = new AuthController(utenteService, gestoreTokenService, authManager, commercialistaRepo, amministratoreRepo, gestoreNotifiche, passwordResetService);
+        com.tesi.gestionalec.dto.request.ResetPasswordRequest request =
+                new com.tesi.gestionalec.dto.request.ResetPasswordRequest();
+        request.setToken("tok-123");
+        request.setNuovaPassword("NuovaPass1!");
+
+        ResponseEntity<com.tesi.gestionalec.dto.response.MessaggioResponse> resp = controller.resetPassword(request);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(passwordResetService).reimpostaPassword("tok-123", "NuovaPass1!");
+    }
+
+    @Test
     @DisplayName("AuthController.login → 200 OK con JWT")
     void auth_login_200() {
-        AuthController controller = new AuthController(utenteService, gestoreTokenService, authManager, commercialistaRepo, gestoreNotifiche);
+        AuthController controller = new AuthController(utenteService, gestoreTokenService, authManager, commercialistaRepo, amministratoreRepo, gestoreNotifiche, passwordResetService);
         com.tesi.gestionalec.dto.request.LoginRequest request = new com.tesi.gestionalec.dto.request.LoginRequest();
         request.setEmail("mario@test.it");
         request.setPassword("Password1!");
@@ -861,7 +985,7 @@ class ControllerTest {
         when(documentoFacade.caricaEAssegna(any(), isNull(), eq(utenteAutenticato)))
                 .thenReturn(DocumentoMapper.toResponse(documento));
 
-        ResponseEntity<?> resp = controller.carica(file, "test.pdf", "PDF", "10", utenteAutenticato);
+        ResponseEntity<?> resp = controller.carica(file, "test.pdf", "PDF", 10L, utenteAutenticato);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(documentoFacade).caricaEAssegna(any(), isNull(), eq(utenteAutenticato));
@@ -879,7 +1003,7 @@ class ControllerTest {
                 .thenReturn(DocumentoMapper.toResponse(documento));
 
         // nome = "" (blank) → deve usare file.getOriginalFilename()
-        ResponseEntity<?> resp = controller.carica(file, "", "PDF", "10", utenteAutenticato);
+        ResponseEntity<?> resp = controller.carica(file, "", "PDF", 10L, utenteAutenticato);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         ArgumentCaptor<DocumentoRequest> cap = ArgumentCaptor.forClass(DocumentoRequest.class);

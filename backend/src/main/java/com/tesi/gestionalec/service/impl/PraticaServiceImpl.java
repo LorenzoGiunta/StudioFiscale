@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.tesi.gestionalec.state.StatoPraticaState;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -206,6 +207,11 @@ public class PraticaServiceImpl implements PraticaService {
     @Override
     public List<Pratica> trovaPerStato(StatoPraticaState stato) {
         return praticaRepo.findByStatoCorrente(stato);
+    }
+
+    @Override
+    public List<Pratica> trovaConScadenzaTra(LocalDate da, LocalDate a) {
+        return praticaRepo.findByScadenzaBetween(da, a);
     }
 
     /**

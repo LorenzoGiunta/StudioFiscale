@@ -2,12 +2,14 @@ package com.tesi.gestionalec.service.impl;
 
 import com.tesi.gestionalec.dto.response.StatisticheResponse;
 import com.tesi.gestionalec.exception.ForbiddenOperationException;
+import com.tesi.gestionalec.exception.InvalidStateException;
 import com.tesi.gestionalec.exception.ResourceNotFoundException;
 import com.tesi.gestionalec.model.Amministratore;
 import com.tesi.gestionalec.model.Documento;
 import com.tesi.gestionalec.model.Notifica;
 import com.tesi.gestionalec.model.Pratica;
 import com.tesi.gestionalec.model.Ruolo;
+import com.tesi.gestionalec.model.StatoRegistrazione;
 import com.tesi.gestionalec.model.TipoNotifica;
 import com.tesi.gestionalec.model.Utente;
 import com.tesi.gestionalec.observer.GestoreNotifiche;
@@ -134,6 +136,71 @@ public class AmministratoreServiceImpl extends UtenteServiceImpl implements Ammi
         }
     }
 
+    // ─── Verifica manuale delle iscrizioni ───────────────────────────────
+
+    @Override
+    public List<Utente> trovaRichiesteIscrizione() {
+        return repo.findByStatoRegistrazioneOrderByDataRegistrazioneAsc(StatoRegistrazione.IN_ATTESA);
+    }
+
+    /**
+     * Approva un'iscrizione dopo la verifica manuale del numero di albo: lo
+     * stato passa ad APPROVATA e l'account viene abilitato all'accesso. È
+     * ammesso anche approvare una richiesta già rifiutata (ripensamento), non
+     * una già approvata.
+     */
+    @Override
+    public void approvaIscrizione(Long id, Utente richiedente) {
+        Utente utente = trovaPerId(id);
+        if (utente.getStatoRegistrazione() == StatoRegistrazione.APPROVATA) {
+            throw new InvalidStateException("Iscrizione", utente.getStatoRegistrazione().name(), "approva");
+        }
+        utente.setStatoRegistrazione(StatoRegistrazione.APPROVATA);
+        utente.setEnabled(true);
+        repo.save(utente);
+
+        notifica(utente,
+                "La tua richiesta di iscrizione è stata approvata: il numero di albo è stato "
+                        + "verificato e il tuo account è ora attivo. Puoi accedere alla piattaforma.",
+                TipoNotifica.ACCOUNT_APPROVATO);
+        aggiornaUltimaAzione(richiedente.getId());
+    }
+
+    /**
+     * Rifiuta un'iscrizione in attesa: l'account resta disabilitato e l'utente
+     * viene avvisato, con la motivazione se l'amministratore ne ha indicata una.
+     */
+    @Override
+    public void rifiutaIscrizione(Long id, String motivazione, Utente richiedente) {
+        Utente utente = trovaPerId(id);
+        if (utente.getStatoRegistrazione() != StatoRegistrazione.IN_ATTESA) {
+            throw new InvalidStateException("Iscrizione", utente.getStatoRegistrazione().name(), "rifiuta");
+        }
+        utente.setStatoRegistrazione(StatoRegistrazione.RIFIUTATA);
+        utente.setEnabled(false);
+        repo.save(utente);
+
+        String messaggio = "La tua richiesta di iscrizione è stata rifiutata da un amministratore.";
+        if (motivazione != null && !motivazione.isBlank()) {
+            messaggio += " Motivazione: " + motivazione.trim();
+        }
+        messaggio += " Per chiarimenti contatta l'amministratore.";
+
+        notifica(utente, messaggio, TipoNotifica.ACCOUNT_RIFIUTATO);
+        aggiornaUltimaAzione(richiedente.getId());
+    }
+
+    // Notifica propagata tramite il pattern Observer (persistita + email). Per
+    // chi non può ancora accedere l'email è di fatto l'unico canale utile.
+    private void notifica(Utente destinatario, String messaggio, TipoNotifica tipo) {
+        Notifica notifica = new Notifica();
+        notifica.setDestinatario(destinatario);
+        notifica.setMessaggio(messaggio);
+        notifica.setTipo(tipo);
+        notifica.setLetta(false);
+        gestoreNotifiche.notificaTutti(notifica);
+    }
+
     @Override
     public StatisticheResponse calcolaStatistiche() {
         // Le query ordinarie escludono i record cancellati: si contano i soli attivi
@@ -147,6 +214,7 @@ public class AmministratoreServiceImpl extends UtenteServiceImpl implements Ammi
         stat.setUtentiAbilitati(utenti.stream().filter(Utente::isEnabled).count());
         stat.setUtentiDisabilitati(utenti.stream().filter(u -> !u.isEnabled()).count());
         stat.setUtentiEliminati(repo.findAllDeleted().size());
+        stat.setRichiesteInAttesa(repo.countByStatoRegistrazione(StatoRegistrazione.IN_ATTESA));
         stat.setUtentiPerRuolo(raggruppa(utenti, u -> u.getRuolo().name()));
 
         stat.setPraticheTotali(pratiche.size());

@@ -21,3 +21,6 @@ target/
 *.env
 !.env.example
 
+
+# Documenti caricati dagli utenti a runtime (file.upload-dir in application.properties)
+backend/uploads/

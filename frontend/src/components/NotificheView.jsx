@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, Check, FileText, CheckCircle, XCircle, AlertCircle, UserPlus, ShieldAlert, UserCheck, Loader2, RefreshCw } from 'lucide-react';
+import { Bell, Check, FileText, CheckCircle, XCircle, AlertCircle, UserPlus, ShieldAlert, UserCheck, UserX, ClipboardCheck, KeyRound, Loader2, RefreshCw } from 'lucide-react';
 import { PageTitle } from './ui/Display.jsx';
 import { Button } from './ui/FormControls.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -15,6 +15,10 @@ const tipoIcons = {
   INVITO_COLLABORAZIONE: UserPlus,
   ACCOUNT_DISABILITATO: ShieldAlert,
   ACCOUNT_CREATO: UserCheck,
+  RICHIESTA_ISCRIZIONE: ClipboardCheck,
+  ACCOUNT_APPROVATO: UserCheck,
+  ACCOUNT_RIFIUTATO: UserX,
+  PASSWORD_MODIFICATA: KeyRound,
 };
 
 const tipoColors = {
@@ -26,6 +30,10 @@ const tipoColors = {
   INVITO_COLLABORAZIONE: 'text-blue-500 bg-blue-50',
   ACCOUNT_DISABILITATO: 'text-red-500 bg-red-50',
   ACCOUNT_CREATO: 'text-emerald-500 bg-emerald-50',
+  RICHIESTA_ISCRIZIONE: 'text-amber-500 bg-amber-50',
+  ACCOUNT_APPROVATO: 'text-emerald-500 bg-emerald-50',
+  ACCOUNT_RIFIUTATO: 'text-red-500 bg-red-50',
+  PASSWORD_MODIFICATA: 'text-navy-500 bg-navy-50',
 };
 
 // Titolo mostrato per ciascun tipo: la risposta del backend non include un
@@ -39,6 +47,10 @@ const tipoTitoli = {
   INVITO_COLLABORAZIONE: 'Invito di collaborazione',
   ACCOUNT_DISABILITATO: 'Account disabilitato',
   ACCOUNT_CREATO: 'Account creato',
+  RICHIESTA_ISCRIZIONE: 'Richiesta di iscrizione',
+  ACCOUNT_APPROVATO: 'Iscrizione approvata',
+  ACCOUNT_RIFIUTATO: 'Iscrizione rifiutata',
+  PASSWORD_MODIFICATA: 'Password reimpostata',
 };
 
 /**

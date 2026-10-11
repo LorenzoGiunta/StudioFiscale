@@ -51,7 +51,7 @@ public class DocumentoController {
             @RequestPart("file") MultipartFile file,
             @RequestPart("nome") String nome,
             @RequestPart("tipoFile") String tipoFile,
-            @RequestPart("praticaId") String praticaId,
+            @RequestParam("praticaId") Long praticaId,   // conversione e 400 automatici se non numerico
             @AuthenticationPrincipal Utente utente) throws IOException {
 
         String percorsoFile = fileStorageService.salva(file);
@@ -61,7 +61,7 @@ public class DocumentoController {
         request.setTipoFile(tipoFile);
         request.setPercorsoFile(percorsoFile);
         request.setDimensione(file.getSize());
-        request.setPraticaId(Long.parseLong(praticaId));
+        request.setPraticaId(praticaId);
         request.setCaricatoDaId(utente.getId());
 
         return ResponseEntity.ok(documentoFacade.caricaEAssegna(request, null, utente));

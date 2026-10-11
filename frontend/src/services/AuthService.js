@@ -17,6 +17,18 @@ class AuthService extends BaseService {
   getCommercialisti() {
     return this.get('/auth/commercialisti');
   }
+
+  // ─── Recupero password ─────────────────────────────────────────────────────
+
+  /** Chiede l'invio del link di reimpostazione all'email indicata. */
+  richiediResetPassword(email) {
+    return this.post('/auth/password/richiedi-reset', { email });
+  }
+
+  /** Imposta la nuova password usando il token ricevuto via email. */
+  resetPassword(token, nuovaPassword) {
+    return this.post('/auth/password/reset', { token, nuovaPassword });
+  }
 }
 
 export default new AuthService();

@@ -21,11 +21,13 @@ import java.util.List;
  *
  * Una volta al giorno esamina le pratiche con scadenza entro una settimana e
  * notifica i clienti interessati, evitando invii ripetuti nella stessa giornata.
+ * Le pratiche candidate sono selezionate con una sola query sull'intervallo di
+ * date, senza caricare l'intero archivio.
  *
- * Il {@code ReentrantLock} è stato rimosso in quanto ridondante: Spring utilizza
- * di default un pool schedulato a singolo thread, quindi due esecuzioni dello
- * stesso job non si sovrappongono mai. In un deployment multi-nodo occorrerebbe
- * un meccanismo di lock distribuito (es. ShedLock con {@code @SchedulerLock}).
+ * Non servono lock: lo stesso job non viene mai eseguito in parallelo dallo
+ * scheduler di Spring, anche con più thread nel pool. In un deployment
+ * multi-nodo occorrerebbe un lock distribuito (es. ShedLock con
+ * {@code @SchedulerLock}).
  */
 @Slf4j
 @Component
@@ -36,25 +38,29 @@ public class ScadenzaFiscaleScheduler {
     private final GestoreNotifiche gestoreNotifiche;
     private final NotificaRepo notificaRepo;
 
+    /** Finestra di preavviso: si notifica da 7 giorni prima fino al giorno stesso. */
+    static final int GIORNI_PREAVVISO = 7;
+
     @Scheduled(cron = "0 0 0 * * *")   // ogni giorno a mezzanotte
     public void controllaScadenze() {
         log.info("Controllo scadenze fiscali avviato...");
 
-        List<Pratica> pratiche = praticaService.trovaTutte()
+        LocalDate oggi = LocalDate.now();
+
+        // Una sola query sull'intervallo utile, invece dell'intero archivio
+        List<Pratica> pratiche = praticaService.trovaConScadenzaTra(oggi, oggi.plusDays(GIORNI_PREAVVISO))
                 .stream()
                 .filter(p -> p.getScadenza() != null && p.getCliente() != null)
                 .toList();
 
-        LocalDateTime inizioOggi = LocalDate.now().atStartOfDay();
+        LocalDateTime inizioOggi = oggi.atStartOfDay();
         LocalDateTime fineOggi   = inizioOggi.plusDays(1);
 
         for (Pratica pratica : pratiche) {
-            LocalDate scadenza = pratica.getScadenza();
-            LocalDate oggi = LocalDate.now();
-            long giorniMancanti = ChronoUnit.DAYS.between(oggi, scadenza);
+            long giorniMancanti = ChronoUnit.DAYS.between(oggi, pratica.getScadenza());
 
-            // Si notifica solo entro i sette giorni dalla scadenza
-            if (giorniMancanti >= 0 && giorniMancanti <= 7) {
+            // Difensivo: la query filtra già, ma la finestra resta esplicita qui
+            if (giorniMancanti >= 0 && giorniMancanti <= GIORNI_PREAVVISO) {
                 // Al più una notifica di scadenza per cliente nella giornata
                 boolean giàNotificato = notificaRepo
                         .existsByDestinatarioAndTipoAndDataCreazioneBetween(

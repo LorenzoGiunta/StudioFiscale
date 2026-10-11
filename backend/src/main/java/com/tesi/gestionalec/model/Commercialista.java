@@ -20,7 +20,7 @@ import java.util.List;
 @DiscriminatorValue("COMMERCIALISTA")
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "inviti")   // collection LAZY: fuori sessione esploderebbe
 @AllArgsConstructor
 @NoArgsConstructor
 public class Commercialista extends Utente {
@@ -42,5 +42,15 @@ public class Commercialista extends Utente {
     @Override
     public Ruolo getRuolo() {
         return Ruolo.COMMERCIALISTA;
+    }
+
+    /**
+     * Il numero di albo non è verificabile in automatico (non esistono API
+     * pubbliche): l'iscrizione resta in attesa finché un amministratore non lo
+     * controlla a mano e approva l'account.
+     */
+    @Override
+    public boolean richiedeApprovazione() {
+        return true;
     }
 }

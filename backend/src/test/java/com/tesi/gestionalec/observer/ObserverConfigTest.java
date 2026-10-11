@@ -1,7 +1,7 @@
 package com.tesi.gestionalec.observer;
 
 import com.tesi.gestionalec.repository.NotificaRepo;
-import com.tesi.gestionalec.service.impl.EmailService;
+import com.tesi.gestionalec.service.impl.SpedizioneEmail;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +26,7 @@ class ObserverConfigTest {
     @Mock
     NotificaRepo notificaRepo;
     @Mock
-    EmailService emailService;
+    SpedizioneEmail emailService;
 
     @Test
     @DisplayName("registraObserver → registra DB ed Email observer su GestoreNotifiche")

@@ -4,7 +4,7 @@ import { useAuth, ROLE_ROUTES } from '../../contexts/AuthContext.jsx';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import authService from '../../services/AuthService.js';
 import { Input, Button } from '../../components/ui/FormControls.jsx';
-import { ArrowRight, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { ArrowRight, ShieldAlert, AlertTriangle, Clock } from 'lucide-react';
 
 /**
  * Pagina di accesso: raccoglie le credenziali, autentica l'utente e lo
@@ -61,13 +61,32 @@ export default function LoginPage() {
 
   /**
    * Traduce l'errore di login in un avviso da mostrare nel form. Il backend
-   * distingue l'account disabilitato (titolo "Account disabilitato") dalle
-   * credenziali errate, restituendo per entrambi uno stato 401: qui i due casi
-   * vengono presentati con stili e messaggi differenti.
+   * restituisce sempre 401 ma distingue, tramite il titolo dell'errore,
+   * l'account disabilitato, l'iscrizione ancora in attesa di verifica e quella
+   * rifiutata dalle semplici credenziali errate: qui ciascun caso viene
+   * presentato con stile e messaggio propri.
    */
   const buildAlert = (err) => {
     const api = err.apiError || err.response?.data;
     const titolo = api?.error || '';
+
+    if (titolo === 'Registrazione in attesa') {
+      return {
+        variant: 'pending',
+        title: 'Iscrizione in attesa di verifica',
+        message: api.message
+          || 'Un amministratore deve ancora verificare il tuo numero di albo. Riceverai un\'email non appena l\'account sarà attivo.',
+      };
+    }
+
+    if (titolo === 'Registrazione rifiutata') {
+      return {
+        variant: 'rejected',
+        title: 'Iscrizione rifiutata',
+        message: api.message
+          || 'La tua richiesta di iscrizione è stata rifiutata. Per chiarimenti contatta l\'amministratore.',
+      };
+    }
 
     if (titolo === 'Account disabilitato') {
       return {
@@ -184,6 +203,11 @@ export default function LoginPage() {
               onChange={set('password')}
               error={errors.password}
             />
+            <div className="flex justify-end -mt-2">
+              <Link to="/password-dimenticata" className="text-xs text-navy-700 font-medium hover:text-navy-900 transition-colors">
+                Password dimenticata?
+              </Link>
+            </div>
 
 
             <Button type="submit" variant="primary" size="lg" loading={loading} className="w-full mt-2" icon={ArrowRight}>
@@ -203,18 +227,22 @@ export default function LoginPage() {
   );
 }
 
+// Stile e icona per ciascun esito del login
+const ALERT_STYLES = {
+  disabled: { Icon: ShieldAlert, box: 'border-amber-300 bg-amber-50 text-amber-800', icon: 'text-amber-600' },
+  pending:  { Icon: Clock,       box: 'border-amber-300 bg-amber-50 text-amber-800', icon: 'text-amber-600' },
+  rejected: { Icon: ShieldAlert, box: 'border-red-300 bg-red-50 text-red-800',       icon: 'text-red-600' },
+  error:    { Icon: AlertTriangle, box: 'border-red-300 bg-red-50 text-red-800',     icon: 'text-red-600' },
+};
+
 /**
  * Banner di avviso mostrato nel form di login. Lo stile e l'icona dipendono dal
- * tipo di esito: ambra/avviso per l'account disabilitato (azione richiesta lato
- * amministratore), rosso/errore per le credenziali non valide.
+ * tipo di esito: ambra per le situazioni che richiedono un'azione lato
+ * amministratore (account disabilitato, iscrizione in attesa), rosso per
+ * l'iscrizione rifiutata e per le credenziali non valide.
  */
 function LoginAlert({ alert }) {
-  const isDisabled = alert.variant === 'disabled';
-  const Icon = isDisabled ? ShieldAlert : AlertTriangle;
-  const styles = isDisabled
-    ? 'border-amber-300 bg-amber-50 text-amber-800'
-    : 'border-red-300 bg-red-50 text-red-800';
-  const iconColor = isDisabled ? 'text-amber-600' : 'text-red-600';
+  const { Icon, box: styles, icon: iconColor } = ALERT_STYLES[alert.variant] || ALERT_STYLES.error;
 
   return (
     <div

@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -18,5 +19,8 @@ public interface PraticaRepo extends JpaRepository<Pratica, Long> {
     List<Pratica> findByCliente(Cliente cliente);
     List<Pratica> findByAssegnataA(Collaboratore c);
     List<Pratica> findByStatoCorrente(StatoPraticaState stato);
+
+    /** Pratiche con scadenza compresa nell'intervallo (estremi inclusi). */
+    List<Pratica> findByScadenzaBetween(LocalDate da, LocalDate a);
     Page<Pratica> findAll(Pageable pageable);
 }

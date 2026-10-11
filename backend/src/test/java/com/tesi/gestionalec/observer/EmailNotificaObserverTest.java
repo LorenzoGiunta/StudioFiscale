@@ -3,7 +3,7 @@ package com.tesi.gestionalec.observer;
 import com.tesi.gestionalec.model.Cliente;
 import com.tesi.gestionalec.model.Notifica;
 import com.tesi.gestionalec.model.TipoNotifica;
-import com.tesi.gestionalec.service.impl.EmailService;
+import com.tesi.gestionalec.service.impl.SpedizioneEmail;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.verify;
  * Concrete observer del pattern Observer: alla ricezione di una notifica
  * traduce il tipo di evento in un'email verso il destinatario.
  *
- * I test isolano l'observer dal resto del sistema sostituendo l'EmailService
+ * I test isolano l'observer dal resto del sistema sostituendo SpedizioneEmail
  * con un mock, così da verificarne la sola responsabilità: scegliere l'oggetto
  * coerente con il tipo di notifica e comporre il corpo del messaggio.
  */
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.verify;
 class EmailNotificaObserverTest {
 
     @Mock
-    EmailService emailService;
+    SpedizioneEmail emailService;
 
     private Notifica notificaConTipo(TipoNotifica tipo) {
         Cliente destinatario = new Cliente();
@@ -50,7 +50,7 @@ class EmailNotificaObserverTest {
 
         observer.aggiorna(notificaConTipo(TipoNotifica.CAMBIO_STATO));
 
-        verify(emailService).inviaEmail(eq("mario@test.it"),
+        verify(emailService).spedisci(eq("mario@test.it"),
                 eq("Aggiornamento stato pratica"), anyString());
     }
 
@@ -61,7 +61,7 @@ class EmailNotificaObserverTest {
 
         observer.aggiorna(notificaConTipo(TipoNotifica.DOCUMENTO_CARICATO));
 
-        verify(emailService).inviaEmail(eq("mario@test.it"),
+        verify(emailService).spedisci(eq("mario@test.it"),
                 eq("Nuovo documento caricato"), anyString());
     }
 
@@ -72,7 +72,7 @@ class EmailNotificaObserverTest {
 
         observer.aggiorna(notificaConTipo(TipoNotifica.DOCUMENTO_APPROVATO));
 
-        verify(emailService).inviaEmail(eq("mario@test.it"),
+        verify(emailService).spedisci(eq("mario@test.it"),
                 eq("Documento approvato"), anyString());
     }
 
@@ -83,7 +83,7 @@ class EmailNotificaObserverTest {
 
         observer.aggiorna(notificaConTipo(TipoNotifica.DOCUMENTO_RIFIUTATO));
 
-        verify(emailService).inviaEmail(eq("mario@test.it"),
+        verify(emailService).spedisci(eq("mario@test.it"),
                 eq("Documento rifiutato"), anyString());
     }
 
@@ -94,7 +94,7 @@ class EmailNotificaObserverTest {
 
         observer.aggiorna(notificaConTipo(TipoNotifica.SCADENZA_IMMINENTE));
 
-        verify(emailService).inviaEmail(eq("mario@test.it"),
+        verify(emailService).spedisci(eq("mario@test.it"),
                 eq("Scadenza imminente"), anyString());
     }
 
@@ -106,7 +106,7 @@ class EmailNotificaObserverTest {
         observer.aggiorna(notificaConTipo(TipoNotifica.CAMBIO_STATO));
 
         ArgumentCaptor<String> htmlCaptor = ArgumentCaptor.forClass(String.class);
-        verify(emailService).inviaEmail(eq("mario@test.it"), eq("Aggiornamento stato pratica"),
+        verify(emailService).spedisci(eq("mario@test.it"), eq("Aggiornamento stato pratica"),
                 htmlCaptor.capture());
         assertThat(htmlCaptor.getValue())
                 .contains("Mario")

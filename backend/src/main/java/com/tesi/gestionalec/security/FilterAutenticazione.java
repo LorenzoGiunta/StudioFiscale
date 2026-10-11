@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -24,6 +25,11 @@ import java.io.IOException;
  * e, se corretto, popola il contesto di sicurezza con l'utente autenticato. In
  * assenza di token o in caso di token non valido la richiesta prosegue senza
  * autenticazione, lasciando a Spring Security la decisione finale sull'accesso.
+ *
+ * Il token da solo non basta: l'account deve esistere ancora ed essere
+ * abilitato. Così la disabilitazione o l'eliminazione da parte di un
+ * amministratore hanno effetto immediato, senza attendere la scadenza (24 h)
+ * dei token già emessi.
  */
 @Component
 @RequiredArgsConstructor
@@ -59,9 +65,18 @@ public class FilterAutenticazione extends OncePerRequestFilter {
         }
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = utenteServiceImpl.loadUserByUsername(email);
+            UserDetails userDetails;
+            try {
+                userDetails = utenteServiceImpl.loadUserByUsername(email);
+            } catch (UsernameNotFoundException e) {
+                // Utente eliminato (logicamente) dopo l'emissione del token: si
+                // prosegue senza autenticare, e Spring Security risponde 401
+                filterChain.doFilter(request, response);
+                return;
+            }
 
-            if (gestoreTokenService.isTokenValido(token, userDetails)) {
+            // Un account disabilitato non viene autenticato anche se il token è valido
+            if (gestoreTokenService.isTokenValido(token, userDetails) && userDetails.isEnabled()) {
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails, null, userDetails.getAuthorities()

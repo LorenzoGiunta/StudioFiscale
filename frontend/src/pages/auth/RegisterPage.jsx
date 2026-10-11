@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import authService from '../../services/AuthService.js';
 import { Input, Select, Button } from '../../components/ui/FormControls.jsx';
-import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2, MailCheck } from 'lucide-react';
 
 const RUOLI = [
   { value: '', label: 'Seleziona ruolo' },
@@ -22,6 +22,9 @@ const REGIMI = [
 /**
  * Pagina di registrazione: raccoglie i dati del nuovo utente, mostra i campi
  * pertinenti al ruolo selezionato e, al termine, autentica e instrada l'utente.
+ * Fa eccezione il commercialista: la sua iscrizione resta in attesa della
+ * verifica manuale del numero di albo da parte di un amministratore, quindi
+ * non viene autenticato ma informato che la richiesta è stata presa in carico.
  */
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -126,6 +129,15 @@ export default function RegisterPage() {
       }
 
       const data = await authService.register(payload);
+
+      // Iscrizione soggetta a verifica: il backend non emette il token e
+      // risponde con statoRegistrazione IN_ATTESA. Niente accesso automatico.
+      if (!data.token) {
+        setStep(3);
+        toast.success('Richiesta di iscrizione inviata');
+        return;
+      }
+
       // AuthResponse: { token, id, ruolo, email, nome, cognome }
       const userData = {
         id: data.id,
@@ -192,7 +204,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Progress */}
-          {needsStep2 && (
+          {needsStep2 && step < 3 && (
             <div className="flex items-center gap-3 mb-6">
               <div className={`flex items-center gap-2 ${step >= 1 ? 'text-navy-900' : 'text-anthracite-300'}`}>
                 <div className={`w-6 h-6 rounded-full text-xs font-semibold flex items-center justify-center ${step >= 1 ? 'bg-navy-900 text-white' : 'bg-anthracite-100 text-anthracite-400'}`}>1</div>
@@ -208,10 +220,14 @@ export default function RegisterPage() {
 
           <div className="mb-6">
             <h2 className="text-xl font-bold text-navy-900 tracking-tight mb-1">
-              {step === 1 ? 'Crea il tuo account' : 'Completa il profilo'}
+              {step === 1 ? 'Crea il tuo account' : step === 2 ? 'Completa il profilo' : 'Richiesta inviata'}
             </h2>
             <p className="text-sm text-anthracite-400">
-              {step === 1 ? 'Inserisci i tuoi dati per registrarti' : `Dati aggiuntivi per il ruolo ${form.ruolo.toLowerCase()}`}
+              {step === 1
+                ? 'Inserisci i tuoi dati per registrarti'
+                : step === 2
+                  ? `Dati aggiuntivi per il ruolo ${form.ruolo.toLowerCase()}`
+                  : 'La tua iscrizione è in attesa di verifica'}
             </p>
           </div>
 
@@ -282,11 +298,33 @@ export default function RegisterPage() {
           {step === 2 && form.ruolo === 'COMMERCIALISTA' && (
             <div className="space-y-4">
               <Input id="reg-albo" label="Numero Iscrizione Albo" placeholder="Es. 12345/A" value={form.numeroAlbo} onChange={set('numeroAlbo')} error={errors.numeroAlbo} />
-              <p className="text-xs text-anthracite-400">Il numero di albo verrà verificato dall'amministratore prima dell'attivazione completa dell'account.</p>
+              <p className="text-xs text-anthracite-400">
+                Non potrai accedere subito: un amministratore verificherà a mano il numero di albo presso
+                l'Ordine e riceverai un'email quando l'account sarà attivato.
+              </p>
               <div className="flex gap-3 mt-2">
                 <Button variant="secondary" size="lg" icon={ArrowLeft} onClick={() => setStep(1)} className="flex-1">Indietro</Button>
                 <Button variant="primary" size="lg" icon={ArrowRight} onClick={handleSubmit} loading={loading} className="flex-1">Registrati</Button>
               </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-5">
+              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-sm px-4 py-4">
+                <MailCheck size={20} className="mt-0.5 shrink-0 text-amber-600" />
+                <div className="text-sm text-amber-900 leading-relaxed">
+                  <p className="font-semibold mb-1">Grazie {form.nome}, abbiamo ricevuto la tua richiesta.</p>
+                  <p>
+                    Un amministratore verificherà il numero di albo <span className="font-mono font-semibold">{form.numeroAlbo}</span> e
+                    attiverà il tuo account. Ti avviseremo all'indirizzo <span className="font-medium">{form.email}</span> appena
+                    potrai accedere.
+                  </p>
+                </div>
+              </div>
+              <Button variant="primary" size="lg" className="w-full" icon={ArrowRight} onClick={() => navigate('/login')}>
+                Vai alla pagina di accesso
+              </Button>
             </div>
           )}
 
